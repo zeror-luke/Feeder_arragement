@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unified SLD - Kanchiyar Section</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Feeder Colors */
+            --color-nariyanpara: #2196F3; /* Blue */
+            --color-kaliyar: #4CAF50;     /* Green */
+            --color-vanchimood: #FF9800;  /* Orange */
+            --color-nedumkandam: #9C27B0; /* Purple */
+            --color-source: #d32f2f;      /* Red */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-color);
+            overflow: hidden; /* Canvas handles scroll */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            padding: 10px 15px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+        }
+
+        h1 { margin: 0; font-size: 1.1rem; color: var(--text-color); }
+        .subtitle { font-size: 0.8rem; color: #666; display: block; }
+
+        .header-controls { display: flex; gap: 10px; }
+
+        .btn {
+            background: #eee;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+        
+        .btn-primary { background: var(--text-color); color: white; }
+        .btn-icon { padding: 8px; border-radius: 50%; width: 40px; height: 40px; }
+
+        /* Main Layout */
+        #app-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Canvas Area */
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+            background-color: #ffffff;
+            background-image: 
+                radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: grab;
+            overflow: hidden;
+            touch-action: none; /* Important for custom touch handling */
+        }
+        #canvas-wrapper:active { cursor: grabbing; }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Floating Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Sidebar / List Overlay */
+        #sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+            transition: transform 0.3s ease;
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            transform: translateX(100%); /* Hidden by default on mobile */
+        }
+
+        #sidebar.open { transform: translateX(0); }
+
+        /* Desktop Sidebar Behavior */
+        @media (min-width: 1024px) {
+            #sidebar {
+                position: relative;
+                transform: translateX(0);
+                width: 380px;
+                border-left: 1px solid #eee;
+            }
+            .mobile-toggle { display: none; }
+            #app-container { padding: 0; }
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-container {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .transformer-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* Transformer Card Style */
+        .t-card {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .t-card:hover { background: #f0f8ff; transform: translateX(-2px); }
+        
+        .t-card.highlight { background: #fff3e0; border-color: var(--color-source); }
+
+        .t-info h4 { margin: 0 0 4px 0; font-size: 0.9rem; }
+        .t-meta { font-size: 0.75rem; color: #666; display: flex; gap: 8px; align-items: center;}
+        
+        .badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; }
+
+        /* Color classes for cards */
+        .border-nariyanpara { border-left-color: var(--color-nariyanpara) !important; }
+        .border-kaliyar { border-left-color: var(--color-kaliyar) !important; }
+        .border-vanchimood { border-left-color: var(--color-vanchimood) !important; }
+        .border-nedumkandam { border-left-color: var(--color-nedumkandam) !important; }
+
+        .bg-nariyanpara { background-color: var(--color-nariyanpara); }
+        .bg-kaliyar { background-color: var(--color-kaliyar); }
+        .bg-vanchimood { background-color: var(--color-vanchimood); }
+        .bg-nedumkandam { background-color: var(--color-nedumkandam); }
+
+        /* Close button for mobile */
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>SLD Kanchiyar</h1>
+        <span class="subtitle">33kV Substation Udhuthurai (08.05.2024)</span>
+    </div>
+    <div class="header-controls">
+        <button class="btn btn-primary mobile-toggle" onclick="toggleSidebar()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            &nbsp;List
+        </button>
+    </div>
+</header>
+
+<div id="app-container">
+    <!-- Canvas Visualization -->
+    <div id="canvas-wrapper">
+        <canvas id="sldCanvas"></canvas>
+        
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomOut()">-</button>
+            <button class="zoom-btn" onclick="resetView()" title="Reset View">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar List -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h3>Distribution Transformers</h3>
+            <button class="close-btn mobile-toggle" onclick="toggleSidebar()">&times;</button>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search DT Name or No...">
+        </div>
+        <div class="transformer-list" id="transformerList">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Data Configuration ---
+    const feederConfig = {
+        'nariyanpara': { label: 'Nariyanpara', color: '#2196F3', ml: 'നരിയൻപാറ' },
+        'kaliyar': { label: 'Kaliyar', color: '#4CAF50', ml: 'കാളിയാർ' },
+        'vanchimood': { label: 'Vanchimood', color: '#FF9800', ml: 'വഞ്ചിമൂട്' },
+        'nedumkandam': { label: 'Nedumkandam', color: '#9C27B0', ml: 'നെടുംകണ്ടം' }
+    };
+
+    const rawData = [
+        { id: "nariyanpara", transformers: [
+            { tNum: "T19", name: "Muriankadukudi", kva: 100 }, { tNum: "T20", name: "Ezham Block", kva: 100 },
+            { tNum: "T21", name: "PT Kanam No-III", kva: 25 }, { tNum: "T22", name: "PT Kanam No-II", kva: 25 },
+            { tNum: "T23", name: "PT Kanam No-I", kva: 25 }, { tNum: "T24", name: "Pampadypuzha", kva: 100 },
+            { tNum: "T1", name: "P C Pilly", kva: 100 }, { tNum: "T2", name: "Martin", kva: 25 },
+            { tNum: "T3", name: "S N", kva: 100 }, { tNum: "T4", name: "Periyar Junction", kva: 100 },
+            { tNum: "T5", name: "Suryanelli", kva: 100 }, { tNum: "T6", name: "Suraj", kva: 100 },
+            { tNum: "T7", name: "Sion", kva: 100 }, { tNum: "T8", name: "Vellamkandam", kva: 100 },
+            { tNum: "T9", name: "Kaliyar", kva: 100 }, { tNum: "T10", name: "PHC", kva: 100 },
+            { tNum: "T11", name: "Kallukandiyil", kva: 100 }, { tNum: "T12", name: "Vayal", kva: 100 },
+            { tNum: "T13", name: "East", kva: 100 }, { tNum: "T14", name: "Mulanjakuzhi", kva: 100 },
+            { tNum: "T15", name: "Muthumala", kva: 100 }, { tNum: "T16", name: "Meram Tender", kva: 100 },
+            { tNum: "T17", name: "46 Aar", kva: 100 }, { tNum: "T18", name: "Vali", kva: 100 }
+        ]},
+        { id: "kaliyar", transformers: [
+            { tNum: "T24", name: "Parimala SD", kva: 160 }, { tNum: "T23", name: "Meram", kva: 100 },
+            { tNum: "T22", name: "Kurishumala", kva: 100 }, { tNum: "T21", name: "East Marthoma", kva: 100 },
+            { tNum: "T20", name: "Vellamkandam", kva: 100 }, { tNum: "T19", name: "Vali", kva: 100 },
+            { tNum: "T18", name: "46 Aar", kva: 100 }, { tNum: "T17", name: "Thampady", kva: 100 },
+            { tNum: "T16", name: "Udhumbannoor", kva: 100 }, { tNum: "T15", name: "Maniyampady", kva: 100 },
+            { tNum: "T14", name: "Thoozhi", kva: 100 }, { tNum: "T13", name: "Moozhyoor", kva: 100 },
+            { tNum: "T12", name: "Vanchimood Tower", kva: 100 }, { tNum: "T11", name: "Kanjirakandam No-II", kva: 100 },
+            { tNum: "T10", name: "Kanjirakandam No-I", kva: 25 }, { tNum: "T9", name: "Paanjan Kulam No-II", kva: 100 },
+            { tNum: "T8", name: "Paanjan Kulam No-I", kva: 100 }, { tNum: "T7", name: "Kadamakuzhi", kva: 250 },
+            { tNum: "T6", name: "Rathinapara", kva: 100 }, { tNum: "T5", name: "Charal", kva: 100 },
+            { tNum: "T4", name: "Thuksheswari", kva: 100 }, { tNum: "T3", name: "Excel Padi", kva: 100 },
+            { tNum: "T2", name: "Kana Mudi Padi", kva: 100 }, { tNum: "T1", name: "Karianipadi", kva: 100 }
+        ]},
+        { id: "vanchimood", transformers: [
+            { tNum: "T1", name: "Vanchimood", kva: 100 }, { tNum: "T2", name: "Ozhukudy", kva: 100 },
+            { tNum: "T19", name: "Karimthala", kva: 100 }, { tNum: "T18", name: "Palaada", kva: 100 },
+            { tNum: "T20", name: "Puthiyapalam", kva: 100 }, { tNum: "T21", name: "Pichikavala", kva: 160 },
+            { tNum: "T4", name: "Gurumathi", kva: 160 }, { tNum: "T5", name: "Ommaram", kva: 100 },
+            { tNum: "T6", name: "Commerce", kva: 100 }, { tNum: "T7", name: "Masco", kva: 100 },
+            { tNum: "T8", name: "Kavalchena Kavala", kva: 100 }, { tNum: "T9", name: "Janikadu", kva: 100 },
+            { tNum: "T10", name: "Sumathikadu", kva: 100 }, { tNum: "T11", name: "Chandan Kavala", kva: 100 },
+            { tNum: "T12", name: "Hindu Pillai", kva: 100 }, { tNum: "T13", name: "Kanchikadapadi", kva: 100 },
+            { tNum: "T14", name: "Nariyanpara", kva: 100 }, { tNum: "T15", name: "Panchayath", kva: 100 },
+            { tNum: "T16", name: "Mikavavu", kva: 100 }, { tNum: "T17", name: "20 Aar", kva: 100 },
+            { tNum: "T22", name: "Allematty No-III", kva: 100 }, { tNum: "T23", name: "Elappally No-II", kva: 25 },
+            { tNum: "T24", name: "Elappally No-I", kva: 25 }, { tNum: "T3", name: "Rajapuram", kva: 100 }
+        ]},
+        { id: "nedumkandam", transformers: [
+            { tNum: "T2", name: "Anguruli", kva: 100 }, { tNum: "T1", name: "Agasthyamudi", kva: 100 },
+            { tNum: "T12", name: "Kadathipadi", kva: 100 }, { tNum: "T7", name: "Kalianthara", kva: 100 },
+            { tNum: "T9", name: "Rajapuram Trans.", kva: 100 }, { tNum: "T10", name: "Periyar SD", kva: 160 },
+            { tNum: "T11", name: "Trans. Tower", kva: 100 }, { tNum: "T8", name: "Kerala Sub", kva: 100 },
+            { tNum: "T17", name: "Pambarm Padi", kva: 100 }, { tNum: "T7", name: "Valumelpadi", kva: 100 },
+            { tNum: "T9", name: "Kanjikadu", kva: 100 }, { tNum: "T8", name: "Kalimuthan", kva: 100 },
+            { tNum: "T1", name: "Millam", kva: 160 }, { tNum: "T6", name: "Kaliyanadu", kva: 100 },
+            { tNum: "T16", name: "Kuttikanam", kva: 100 }, { tNum: "T15", name: "Kavadiyil Kavala", kva: 100 },
+            { tNum: "T14", name: "Thavarakalil", kva: 100 }, { tNum: "T13", name: "Madi", kva: 100 },
+            { tNum: "T12", name: "Meppam", kva: 100 }, { tNum: "T11", name: "Kazhimala", kva: 100 },
+            { tNum: "T10", name: "7th Block", kva: 100 }, { tNum: "T9", name: "Tulsipadi", kva: 100 },
+            { tNum: "T8", name: "Pampady Puzha", kva: 100 }, { tNum: "T7", name: "PT Kanam", kva: 100 }
+        ]}
+    ];
+
+    // Flatten data for list rendering and mapping
+    let flatData = [];
+    rawData.forEach(feeder => {
+        feeder.transformers.forEach(t => {
+            flatData.push({
+                ...t,
+                feederId: feeder.id,
+                feederName: feederConfig[feeder.id].label,
+                color: feederConfig[feeder.id].color
+            });
+        });
+    });
+
+    // --- State & Config ---
+    const canvas = document.getElementById('sldCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrapper = document.getElementById('canvas-wrapper');
+    
+    let state = {
+        scale: 1,
+        panning: false,
+        pointX: 0,
+        pointY: 0,
+        startX: 0,
+        startY: 0,
+        hoveredNode: null
+    };
+    
+    // Layout Constants
+    const L = {
+        sourceX: 100,
+        feederX: 400,
+        transX: 800,
+        rowHeight: 50, // Vertical spacing between transformers
+        feederGap: 150 // Vertical spacing between feeder blocks
+    };
+
+    // --- Initialization ---
+    function init() {
+        resizeCanvas();
+        renderList();
+        requestAnimationFrame(drawLoop);
+
+        // Events
+        window.addEventListener('resize', resizeCanvas);
+        document.getElementById('searchInput').addEventListener('input', renderList);
+        
+        // Mouse Events
+        wrapper.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        wrapper.addEventListener('wheel', onWheel, { passive: false });
+
+        // Touch Events
+        wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onMouseUp);
+    }
+
+    function resizeCanvas() {
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+        // Center initial view
+        if(state.pointX === 0 && state.pointY === 0) {
+           resetView(); 
+        }
+    }
+
+    // --- Core Drawing Logic ---
+    function drawLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        
+        // Apply Pan & Zoom
+        ctx.translate(state.pointX, state.pointY);
+        ctx.scale(state.scale, state.scale);
+
+        // Draw Connections (First layer)
+        drawConnections();
+
+        // Draw Nodes (Second layer)
+        drawNodes();
+
+        ctx.restore();
+        requestAnimationFrame(drawLoop);
+    }
+
+    function calculateLayout() {
+        // Calculate Y positions for all elements
+        let currentY = 100;
+        let layoutMap = []; // Stores {type, x, y, data, color}
+
+        // 1. Source Node
+        // Calculate total height to center source vertically
+        let totalHeight = 0;
+        rawData.forEach(f => totalHeight += (f.transformers.length * L.rowHeight));
+        totalHeight += (rawData.length - 1) * L.feederGap;
+        
+        const sourceY = (totalHeight / 2) + 100; // +100 padding top
+        layoutMap.push({ type: 'source', x: L.sourceX, y: sourceY, label: '33kV Substation\nUdhuthurai', color: '#d32f2f' });
+
+        // 2. Feeders & Transformers
+        let startY = 100;
+        
+        rawData.forEach(feeder => {
+            const config = feederConfig[feeder.id];
+            const count = feeder.transformers.length;
+            const blockHeight = count * L.rowHeight;
+            const feederY = startY + (blockHeight / 2);
+
+            // Feeder Node
+            layoutMap.push({ 
+                type: 'feeder', 
+                x: L.feederX, 
+                y: feederY, 
+                label: config.label + ' Feeder', 
+                color: config.color,
+                id: feeder.id
+            });
+
+            // Connection Source -> Feeder
+            drawConnection(L.sourceX, sourceY, L.feederX, feederY, config.color);
+
+            // Transformers
+            feeder.transformers.forEach((t, index) => {
+                const tY = startY + (index * L.rowHeight);
+                layoutMap.push({
+                    type: 'transformer',
+                    x: L.transX,
+                    y: tY,
+                    data: t,
+                    feederId: feeder.id,
+                    color: config.color
+                });
+
+                // Connection Feeder -> Transformer
+                // Use Cubic Bezier for smooth branching
+                ctx.beginPath();
+                ctx.moveTo(L.feederX, feederY);
+                ctx.bezierCurveTo(L.feederX + 150, feederY, L.transX - 150, tY, L.transX, tY);
+                
+                // Style based on hover
+                const isHovered = state.hoveredNode && state.hoveredNode.data.tNum === t.tNum;
+                ctx.lineWidth = isHovered ? 4 : 1.5;
+                ctx.strokeStyle = isHovered ? '#333' : config.color;
+                ctx.globalAlpha = isHovered ? 1 : 0.4;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            });
+
+            startY += blockHeight + L.feederGap;
+        });
+
+        return layoutMap;
+    }
+
+    function drawConnection(x1, y1, x2, y2, color) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+    }
+
+    function drawConnections() {
+        // Logic embedded in calculateLayout for simplicity in loop optimization, 
+        // but separated here for cleaner structure if needed.
+        // In this implementation, calculateLayout draws lines immediately for performance.
+        calculateLayout(); 
+    }
+
+    // This function actually runs twice in the loop above due to structure, let's refactor slightly for single pass
+    // Redefining drawLoop to use a pure separation of data calc and render
+    let layoutCache = [];
+
+    function drawLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(state.pointX, state.pointY);
+        ctx.scale(state.scale, state.scale);
+
+        // Recalculate layout only if needed (optimization: could be static, but doing dynamic here)
+        layoutCache = getLayoutNodes();
+
+        // Draw Lines
+        layoutCache.forEach(node => {
+            if(node.type === 'source-link') {
+                 drawConnection(node.x1, node.y1, node.x2, node.y2, node.color);
+            } else if (node.type === 'branch-link') {
+                const isHovered = state.hoveredNode && state.hoveredNode.data && state.hoveredNode.data.tNum === node.targetTNum;
+                ctx.beginPath();
+                ctx.moveTo(node.x1, node.y1);
+                ctx.bezierCurveTo(node.cx1, node.cy1, node.cx2, node.cy2, node.x2, node.y2);
+                ctx.lineWidth = isHovered ? 4 : 1.5;
+                ctx.strokeStyle = isHovered ? '#333' : node.color;
+                ctx.globalAlpha = isHovered ? 1 : 0.3;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        });
+
+        // Draw Nodes
+        layoutCache.forEach(node => {
+            if(node.type === 'node') drawNode(node);
+        });
+
+        ctx.restore();
+        requestAnimationFrame(drawLoop);
+    }
+
+    function getLayoutNodes() {
+        let nodes = [];
+        let totalH = rawData.reduce((acc, f) => acc + (f.transformers.length * L.rowHeight), 0) + (rawData.length - 1) * L.feederGap;
+        let sourceY = (totalH / 2) + 100;
+        let startY = 100;
+
+        // Source
+        nodes.push({ type: 'node', x: L.sourceX, y: sourceY, label: '33kV\nSubstation', shape: 'rect', color: '#d32f2f' });
+
+        rawData.forEach(feeder => {
+            const config = feederConfig[feeder.id];
+            const count = feeder.transformers.length;
+            const blockH = count * L.rowHeight;
+            const feederY = startY + (blockH / 2);
+
+            // Link Source to Feeder
+            nodes.push({ type: 'source-link', x1: L.sourceX, y1: sourceY, x2: L.feederX, y2: feederY, color: config.color });
+
+            // Feeder Node
+            nodes.push({ type: 'node', x: L.feederX, y: feederY, label: config.label, shape: 'circle', color: config.color, id: feeder.id });
+
+            feeder.transformers.forEach(t => {
+                const tY = startY + (t.indexOffset !== undefined ? t.indexOffset : feeder.transformers.indexOf(t)) * L.rowHeight;
+                const tIndex = feeder.transformers.indexOf(t); // Explicit index
+                
+                // Link Feeder to Trans
+                nodes.push({ 
+                    type: 'branch-link', 
+                    x1: L.feederX, y1: feederY, 
+                    x2: L.transX, y2: startY + (tIndex * L.rowHeight),
+                    cx1: L.feederX + 150, cy1: feederY,
+                    cx2: L.transX - 150, cy2: startY + (tIndex * L.rowHeight),
+                    color: config.color,
+                    targetTNum: t.tNum
+                });
+
+                // Trans Node
+                nodes.push({
+                    type: 'node',
+                    x: L.transX,
+                    y: startY + (tIndex * L.rowHeight),
+                    label: `${t.tNum}`,
+                    subLabel: t.name,
+                    data: t,
+                    shape: 'rect',
+                    color: config.color
+                });
+            });
+            startY += blockH + L.feederGap;
+        });
+        return nodes;
+    }
+
+    function drawNode(node) {
+        ctx.fillStyle = node.color;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+
+        // Highlight effect
+        const isHovered = state.hoveredNode && state.hoveredNode.data && state.hoveredNode.data.tNum === node.data?.tNum;
+        
+        if (isHovered) {
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#fff'; // White center on hover
+            ctx.strokeStyle = node.color;
+            ctx.lineWidth = 3;
+        } else {
+            ctx.shadowBlur = 0;
+        }
+
+        if (node.shape === 'rect') {
+            ctx.beginPath();
+            ctx.rect(node.x - 20, node.y - 15, 40, 30);
+            ctx.fill();
+            ctx.stroke();
+        } else if (node.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Text
+        ctx.fillStyle = isHovered ? '#000' : '#fff';
+        if (node.shape === 'rect' && !isHovered) ctx.fillStyle = '#000'; // Readability on small rects
+        if (node.shape === 'rect' && isHovered) ctx.fillStyle = node.color;
+
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Simple truncation for canvas
+        const label = node.label.length > 8 ? node.label.substring(0,6)+'..' : node.label;
+        ctx.fillText(label, node.x, node.y);
+
+        // Side Label
+        ctx.fillStyle = "#333";
+        ctx.textAlign = "left";
+        ctx.font = "12px Arial";
+        if(node.subLabel) {
+            ctx.fillText(node.subLabel, node.x + 25, node.y + 4);
+            ctx.font = "10px #666";
+            ctx.fillText(`${node.data.kva} kVA`, node.x + 25, node.y + 16);
+        } else {
+            ctx.fillText(node.label, node.x + 35, node.y);
+        }
+    }
+
+    // --- Interaction Logic ---
+    function onMouseDown(e) {
+        state.panning = true;
+        state.startX = e.clientX - state.pointX;
+        state.startY = e.clientY - state.pointY;
+        wrapper.style.cursor = 'grabbing';
+    }
+
+    function onMouseMove(e) {
+        // Hover detection
+        handleHover(e.clientX, e.clientY);
+
+        if (!state.panning) return;
+        e.preventDefault();
+        state.pointX = e.clientX - state.startX;
+        state.pointY = e.clientY - state.startY;
+    }
+
+    function onMouseUp() {
+        state.panning = false;
+        wrapper.style.cursor = 'grab';
+    }
+
+    function onTouchStart(e) {
+        if (e.touches.length === 1) {
+            state.panning = true;
+            state.startX = e.touches[0].clientX - state.pointX;
+            state.startY = e.touches[0].clientY - state.pointY;
+        }
+    }
+
+    function onTouchMove(e) {
+        if (state.panning && e.touches.length === 1) {
+            e.preventDefault(); // Stop scroll
+            state.pointX = e.touches[0].clientX - state.startX;
+            state.pointY = e.touches[0].clientY - state.startY;
+        }
+    }
+
+    function onWheel(e) {
+        e.preventDefault();
+        const xs = (e.clientX - state.pointX) / state.scale;
+        const ys = (e.clientY - state.pointY) / state.scale;
+        const delta = -e.deltaY;
+        
+        (delta > 0) ? (state.scale *= 1.1) : (state.scale /= 1.1);
+        
+        state.pointX = e.clientX - xs * state.scale;
+        state.pointY = e.clientY - ys * state.scale;
+    }
+
+    function handleHover(screenX, screenY) {
+        const rect = canvas.getBoundingClientRect();
+        // Transform screen to world coords
+        const x = (screenX - rect.left - state.pointX) / state.scale;
+        const y = (screenY - rect.top - state.pointY) / state.scale;
+
+        let found = null;
+        // Check nodes
+        for (let node of layoutCache) {
+            if (node.type === 'node' && node.data) {
+                // Simple box hit test
+                if (x >= node.x - 20 && x <= node.x + 150 && y >= node.y - 15 && y <= node.y + 15) {
+                    found = node;
+                    break;
+                }
+            }
+        }
+
+        if (state.hoveredNode !== found) {
+            state.hoveredNode = found;
+            // Scroll sidebar
+            if (found) {
+                highlightSidebarItem(found.data.tNum);
+            }
+        }
+    }
+
+    // --- UI Logic ---
+    function renderList() {
+        const list = document.getElementById('transformerList');
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        list.innerHTML = '';
+
+        flatData.forEach(item => {
+            if (item.name.toLowerCase().includes(query) || item.tNum.toLowerCase().includes(query)) {
+                const div = document.createElement('div');
+                div.className = `t-card border-${item.feederId}`;
+                div.id = `card-${item.tNum}`;
+                div.innerHTML = `
+                    <div class="t-info">
+                        <h4>${item.name}</h4>
+                        <div class="t-meta">
+                            <span class="badge bg-${item.feederId}">${item.tNum}</span>
+                            <span>${item.kva} kVA</span>
+                        </div>
+                    </div>
+                `;
+                div.onclick = () => focusOnNode(item.tNum);
+                list.appendChild(div);
+            }
+        });
+    }
+
+    function highlightSidebarItem(tNum) {
+        const el = document.getElementById(`card-${tNum}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight');
+            setTimeout(() => el.classList.remove('highlight'), 1500);
+            
+            // Open sidebar on mobile if closed
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('open');
+            }
+        }
+    }
+
+    function focusOnNode(tNum) {
+        const node = layoutCache.find(n => n.data && n.data.tNum === tNum);
+        if (node) {
+            // Center view on node
+            state.pointX = (canvas.width / 2) - (node.x * state.scale);
+            state.pointY = (canvas.height / 2) - (node.y * state.scale);
+            
+            // Close sidebar on mobile after selection
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+        }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    // Zoom Controls
+    function zoomIn() {
+        state.scale *= 1.2;
+    }
+    function zoomOut() {
+        state.scale /= 1.2;
+    }
+    function resetView() {
+        state.scale = 0.6; // Default zoom out to see more
+        state.pointX = 50;
+        state.pointY = 50;
+    }
+
+    // Run
+    init();
+    resetView(); // Set initial zoom
+
+</script>
+</body>
+</html>
