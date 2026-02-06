@@ -1,3 +1,4 @@
+---Kanchiyar---
 Transformer,Location / Name (Malayalam),Capacity
 T1,Kuzhalpalam (കുഴൽപ്പാലം),100 kVA 
 T2,Muzhiyankalpadi (മുഴിയാങ്കൽപ്പടി),100 kVA 
@@ -25,10 +26,11 @@ T23,[Name Not Listed],100 kVA
 T24,Vellilamkandam (വെള്ളിലാംകണ്ടം),100 kVA 
 
 
+---Nariampara---
 Transformer,Location / Name (Malayalam),Capacity
-T1,20,100 kVA 
-T2,[Name Not Listed],100 kVA 
-T3,[Illegible],100 kVA 
+T1,20 Acer,100 kVA 
+T2,Microwave,100 kVA 
+T3,Plamude,100 kVA 
 T4,Nariyanpara (നരിയംപാറ),100 kVA 
 T5,Kottampadi (കൊറ്റംപടി),100 kVA 
 T6,Hyundai (ഹ്യുണ്ടായി),100 kVA 
@@ -45,10 +47,11 @@ T16,Puthiyapalam (പുതിയപാലം),100 kVA
 T17,Palakkada (പാലാക്കാട),100 kVA 
 
 
+---Vellilamkandam---
 Transformer,Location / Name (Malayalam),Capacity
-T1,No-I,100 kVA 
-T2,No-II,25 kVA 
-T3,No-III,100 kVA 
+T1,Ambalamedu No-I,100 kVA 
+T2,Ambalamedu No-II,25 kVA 
+T3,Ambalamedu No-III,100 kVA 
 T4,Rajapuram (രാജപുരം),100 kVA 
 T5,Illikkamedu No-I (ഇല്ലിക്കമേട്),25 kVA 
 T6,Illikkamedu No-II (ഇല്ലിക്കമേട്),25 kVA 
@@ -72,8 +75,9 @@ T23,Kodalipara Hostel (കോടാലിപ്പാറ ഹോസ്റ്റ�
 T24,Kodalipara (കോടാലിപ്പാറ),100 kVA 
 
 
+---Vandanmeedu---
 Transformer,Location / Name (Malayalam),Capacity
-T1,[Name Not Listed],100 kVA 
+T1,Karimpanippadi,100 kVA 
 T2,Kannamundapadi (കണ്ണമുണ്ടപടി),100 kVA 
 T3,Excel Padi (എക്സൽ പടി),100 kVA 
 T4,Thumbassery (തുമ്പശ്ശേരി),100 kVA 
@@ -94,5 +98,6 @@ T18,Ozhukappadi (ഒഴുകപ്പടി),100 kVA
 T19,Vallakkadavu (വള്ളക്കടവ്),100 kVA 
 
 
+---Nedumkandam---
 Transformer,Location / Name (Malayalam),Capacity
 T1,Anchuruli (അഞ്ചുരുളി),100 kVA

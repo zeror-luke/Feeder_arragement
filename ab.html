@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AB Switches - KSEB Kanchiyar</title>
+  <link href="main.css" rel="stylesheet">
+  <style>
+    .ab-list { max-width:900px; margin:2rem auto; padding:1rem; }
+    .ab-item { padding:8px 12px; border-bottom:1px solid #eee; }
+    .ab-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>KSEB Kanchiyar Section</h1>
+    <p>AB Switches - Interactive List</p>
+    <div class="badge-header">Updated: 08.05.2024</div>
+  </header>
+
+  <div class="controls">
+    <div class="control-bar">
+      <div class="search-box">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="abSearch" placeholder="Search AB switch...">
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterAB('all', this)">All</button>
+      </div>
+      <div>
+        <button class="btn btn-cancel" onclick="window.location.href='index.html'">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section class="feeder-section">
+      <div class="feeder-header">
+        <h2>AB Switches</h2>
+        <span class="voltage-badge">AB List</span>
+      </div>
+      <div class="transformer-grid" id="ab-grid">
+        <!-- AB cards will be injected here -->
+      </div>
+    </section>
+  </main>
+
+  <footer style="text-align:center;">
+    <small style="color:#6b7280;">Generated from AB.txt</small>
+  </footer>
+
+  <script src="main.js"></script>
+  <script>
+    let feedersList = [];
+    let abLinks = [];
+
+    async function loadAB() {
+      try {
+        const [resLoc, resFeeders, resLinks] = await Promise.all([
+          fetch('/api/locations'),
+          fetch('/api/feeders'),
+          fetch('/api/ablinks')
+        ]);
+        if (!resLoc.ok) throw new Error('Failed to load locations');
+        const data = await resLoc.json();
+        feedersList = resFeeders.ok ? await resFeeders.json() : ['feeder-kanchiyar','feeder-nariampara','feeder-vellilamkandam','feeder-vandanmeedu','feeder-nedumkandam'];
+        abLinks = resLinks.ok ? await resLinks.json() : [];
+
+        const grid = document.getElementById('ab-grid');
+        grid.innerHTML = '';
+        data.forEach(row => {
+          const card = document.createElement('div');
+          card.className = 'transformer-card kv-100';
+          card.style.cursor = 'pointer';
+
+          const moveContainer = document.createElement('div'); moveContainer.className = 'move-btn-container';
+          moveContainer.innerHTML = `<button class="move-btn">&#8635;</button><span class="move-tooltip">Link AB</span>`;
+
+          const nameEl = document.createElement('div'); nameEl.className = 'tr-name'; nameEl.textContent = row.name;
+          const idEl = document.createElement('div'); idEl.className = 'tr-id'; idEl.textContent = `AB-${row.id}`;
+          const badge = document.createElement('div'); badge.className = 'kva-badge';
+
+          const existing = abLinks.find(a => a.location_id === row.id);
+          if (existing && (existing.feeder_a || existing.feeder_b)) {
+            const fa = existing.feeder_a ? existing.feeder_a.replace('feeder-','') : '-';
+            const fb = existing.feeder_b ? existing.feeder_b.replace('feeder-','') : '-';
+            badge.textContent = `${fa} ↔ ${fb}`;
+          } else {
+            badge.textContent = 'No link';
+          }
+
+          card.appendChild(moveContainer);
+          card.appendChild(nameEl);
+          card.appendChild(idEl);
+          card.appendChild(badge);
+
+          card.addEventListener('click', () => openABLinkModal(row));
+
+          grid.appendChild(card);
+        });
+
+        // wire search box
+        const search = document.getElementById('abSearch');
+        search.oninput = function() {
+          const q = this.value.toLowerCase();
+          document.querySelectorAll('#ab-grid .transformer-card').forEach(c => {
+            const name = c.querySelector('.tr-name').textContent.toLowerCase();
+            c.style.display = name.indexOf(q) > -1 ? '' : 'none';
+          });
+        };
+
+      } catch (e) {
+        console.error(e);
+        const grid = document.getElementById('ab-grid');
+        grid.textContent = 'Could not load AB list.';
+      }
+    }
+
+    function openABLinkModal(location) {
+      // build modal if not exists
+      let modal = document.getElementById('abLinkModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'abLinkModal';
+        modal.innerHTML = `
+          <div class="modal-box">
+            <h3 class="modal-title">Create Interlink for AB</h3>
+            <div class="form-group">
+              <label>AB Location</label>
+              <div id="abName" style="font-weight:600"></div>
+            </div>
+            <div class="form-group">
+              <label for="feederA">Feeder A</label>
+              <select id="feederA" class="form-select"></select>
+            </div>
+            <div class="form-group">
+              <label for="feederB">Feeder B</label>
+              <select id="feederB" class="form-select"></select>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-cancel" id="abCancel">Cancel</button>
+              <button class="btn btn-save" id="abSave">Submit</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+        document.getElementById('abCancel').addEventListener('click', () => modal.classList.remove('active'));
+      }
+
+      // populate feeders
+      const selA = modal.querySelector('#feederA');
+      const selB = modal.querySelector('#feederB');
+      selA.innerHTML = '';
+      selB.innerHTML = '';
+      feedersList.forEach(f => {
+        const o1 = document.createElement('option'); o1.value = f; o1.textContent = f.replace('feeder-','');
+        const o2 = document.createElement('option'); o2.value = f; o2.textContent = f.replace('feeder-','');
+        selA.appendChild(o1);
+        selB.appendChild(o2);
+      });
+
+      document.getElementById('abName').textContent = location.name;
+
+      // preselect if exists
+      const existing = abLinks.find(a => a.location_id === location.id);
+      if (existing) {
+        selA.value = existing.feeder_a || '';
+        selB.value = existing.feeder_b || '';
+      }
+
+      modal.classList.add('active');
+
+      document.getElementById('abSave').onclick = async () => {
+        const payload = { locationId: location.id, feederA: selA.value, feederB: selB.value };
+        try {
+          const resp = await fetch('/api/ablink', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+          if (!resp.ok) throw new Error('save failed');
+          const result = await resp.json();
+          // update local cache
+          const idx = abLinks.findIndex(a => a.location_id === location.id);
+          if (idx >= 0) abLinks[idx] = { ...abLinks[idx], feeder_a: payload.feederA, feeder_b: payload.feederB };
+          else abLinks.push({ location_id: location.id, feeder_a: payload.feederA, feeder_b: payload.feederB });
+          showToast('Interlink saved');
+          modal.classList.remove('active');
+        } catch (e) {
+          console.error(e);
+          showToast('Could not save interlink');
+        }
+      };
+    }
+
+    function filterAB(k, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      if (k === 'all') {
+        document.querySelectorAll('#ab-grid .transformer-card').forEach(c => c.style.display = '');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAB);
+  </script>
+</body>
+</html>

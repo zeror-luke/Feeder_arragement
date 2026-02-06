@@ -48,9 +48,11 @@ Locations & Landmarks (English & Malayalam)
 
     Varakapallimedu (വരകപള്ളിമേട്)
 
-    Kanchiyar Yard /കാഞ്ചിയാർ യാഡ് 
- Ashish Garden / (/ ആശിശ് ഗാർഡൻ /
-Parish Hall  പോരിഷ് ഹാൾ)
+    Kanchiyar Yard (കാഞ്ചിയാർ യാഡ്)
+
+    Ashish Garden (ആശിശ് ഗാർഡൻ)
+
+    Parish Hall  (പോരിഷ് ഹാൾ)
 
     Valumelpadi (വാലുമേൽപടി)
 
@@ -64,7 +66,9 @@ Parish Hall  പോരിഷ് ഹാൾ)
 
     Vettom
 
- Mullakkathandu / East Mattukkatta (വെട്ടം മുല്ലക്കത്തണ്ട് / ഈസ്റ്റ് മാട്ടുക്കട്ട)
+    Mullakkathandu (വെട്ടം മുല്ലക്കത്തണ്ട്)
+    
+    East Mattukkatta (ഈസ്റ്റ് മാട്ടുക്കട്ട)
 
     Meppara Temple (മേപ്പാറ ടെംബിൾ)
 
@@ -104,7 +108,9 @@ Parish Hall  പോരിഷ് ഹാൾ)
 
     Kozhimala (കോഴിമല)
 
-    Kavadi Kavala Mattappally (കാവടി കവല മറ്റപ്പള്ളി)
+    Kavadi Kavala (കാവടി കവല)
+    
+    Mattappally (മറ്റപ്പള്ളി)
 
     Kochuchenattukavala (കോച്ചുചേനാട്ടുകവല)
 

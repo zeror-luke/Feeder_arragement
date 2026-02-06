@@ -1,0 +1,15 @@
+{
+  "name": "feeder-arrangement",
+  "version": "1.0.0",
+  "description": "Simple API to serve feeder/transformer data with SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "import": "node server.js --import"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "csv-parse": "^5.4.0"
+  }
+}
