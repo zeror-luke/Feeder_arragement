@@ -1,0 +1,98 @@
+Transformer,Location / Name (Malayalam),Capacity
+T1,Kuzhalpalam (കുഴൽപ്പാലം),100 kVA 
+T2,Muzhiyankalpadi (മുഴിയാങ്കൽപ്പടി),100 kVA 
+T3,Valumelpadi (വാലുമ്മേൽപ്പടി),100 kVA 
+T4,Vengaloorkada Town (വെങ്ങാലൂർകട ടൗൺ),100 kVA 
+T5,Swarnavilasom (സ്വർണവിലാസം),100 kVA 
+T6,Jawahar Colony (ജവഹർകോളനി),100 kVA 
+T7,Pathippadi (പാത്തിപ്പടി),250 kVA 
+T8,Udayapuram (ഉദയപുരം),100 kVA 
+T9,Milma (മിൽമ),160 kVA 
+T10,JPM,160 kVA 
+T11,Kavadikkavala (കാവടിക്കവല),100 kVA 
+T12,Kunjimala (കുഞ്ചിമല),100 kVA 
+T13,KSEB,100 kVA 
+T14,Vengaloorkada Colony (വെങ്ങാലൂർകട കോളനി),160 kVA 
+T15,Kalthotti (കൽത്തൊട്ടി),100 kVA 
+T16,[Name Not Listed],100 kVA 
+T17,Venattupadi (വേണാട്ടുപടി),100 kVA 
+T18,East Mattukkatta (ഈസ്റ്റ് മാട്ടുക്കട്ട),100 kVA 
+T19,Kurisumala (കുരിശുമല),100 kVA 
+T20,Meppara (മേപ്പാറ),100 kVA 
+T21,Periyamala Estate (പെരിയമല എസ്റ്റേറ്റ്),160 kVA 
+T22,46 Acre (46 എക്കർ),100 kVA 
+T23,[Name Not Listed],100 kVA 
+T24,Vellilamkandam (വെള്ളിലാംകണ്ടം),100 kVA 
+
+
+Transformer,Location / Name (Malayalam),Capacity
+T1,20,100 kVA 
+T2,[Name Not Listed],100 kVA 
+T3,[Illegible],100 kVA 
+T4,Nariyanpara (നരിയംപാറ),100 kVA 
+T5,Kottampadi (കൊറ്റംപടി),100 kVA 
+T6,Hyundai (ഹ്യുണ്ടായി),100 kVA 
+T7,Chandrankavala (ചന്ദ്രൻകവല),100 kVA 
+T8,Sumathikada (സുമതികs),100 kVA 
+T9,Johnkada (ജോണികട),100 kVA 
+T10,Kochuchenattukavala (കൊച്ചുചെനാട്ട്കവല),100 kVA 
+T11,Mosque (മോസ്ക്),100 kVA 
+T12,Commerce (കോമേഴ്‌സ്),100 kVA 
+T13,0,100 kVA 
+T14,Gurumandiram (ഗുരുമന്ദിരം),160 kVA 
+T15,Pallikavala (പള്ളികവല),160 kVA 
+T16,Puthiyapalam (പുതിയപാലം),100 kVA 
+T17,Palakkada (പാലാക്കാട),100 kVA 
+
+
+Transformer,Location / Name (Malayalam),Capacity
+T1,No-I,100 kVA 
+T2,No-II,25 kVA 
+T3,No-III,100 kVA 
+T4,Rajapuram (രാജപുരം),100 kVA 
+T5,Illikkamedu No-I (ഇല്ലിക്കമേട്),25 kVA 
+T6,Illikkamedu No-II (ഇല്ലിക്കമേട്),25 kVA 
+T7,SN,100 kVA 
+T8,Martin (മാർട്ടിൻ),25 kVA 
+T9,Palli City (പള്ളിസിറ്റി),100 kVA 
+T10,Pambadikuzhi (പാമ്പാടിക്കുഴി),100 kVA 
+T11,PT No-I,25 kVA 
+T12,PT No-II,25 kVA 
+T13,PT No-III,25 kVA 
+T14,7th Block (ഏഴാം ബ്ലോക്ക്),100 kVA 
+T15,Murikkattukudi (മുരിക്കാട്ടുകുടി),100 kVA 
+T16,Vikas (വികാസ്),100 kVA 
+T17,Thoppippala (തൊപ്പിപ്പാള),100 kVA 
+T18,Mattappally (മറ്റപ്പള്ളി),100 kVA 
+T19,Swaraj (സ്വരാജ്),100 kVA 
+T20,Periyonkavala (പെരിയോൻകവല),100 kVA 
+T21,Zion (സയൺ),100 kVA 
+T22,Chandran City (ചന്ദ്രൻസിറ്റി),160 kVA 
+T23,Kodalipara Hostel (കോടാലിപ്പാറ ഹോസ്റ്റൽ),100 kVA 
+T24,Kodalipara (കോടാലിപ്പാറ),100 kVA 
+
+
+Transformer,Location / Name (Malayalam),Capacity
+T1,[Name Not Listed],100 kVA 
+T2,Kannamundapadi (കണ്ണമുണ്ടപടി),100 kVA 
+T3,Excel Padi (എക്സൽ പടി),100 kVA 
+T4,Thumbassery (തുമ്പശ്ശേരി),100 kVA 
+T5,Chappathu (ചപ്പാത്ത്),100 kVA 
+T6,Rathinappara (രത്തിനപ്പാറ),100 kVA 
+T7,Kadamakuzhi (കടമാകുഴി),250 kVA 
+T8,Pottankulam No-I (പൊട്ടൻകുളം),100 kVA 
+T9,Pottankulam No-II (പൊട്ടൻകുളം),100 kVA 
+T10,Kokkattumala No-I (കൊക്കാട്ട്മല),25 kVA 
+T11,Kokkattumala No-II (കൊക്കാട്ട്മല),100 kVA 
+T12,Vallakkadavu Tower (വള്ളക്കടവ് ടവർ),100 kVA 
+T13,Moolekkada (മൂലേക്കട),100 kVA 
+T14,[Name Not Listed],100 kVA 
+T15,Maniyangattupadi (മണിയങ്ങാട്ട്പടി),100 kVA 
+T16,Udumbanadu (ഉടുമ്പനാട്),100 kVA 
+T17,[Illegible],100 kVA 
+T18,Ozhukappadi (ഒഴുകപ്പടി),100 kVA 
+T19,Vallakkadavu (വള്ളക്കടവ്),100 kVA 
+
+
+Transformer,Location / Name (Malayalam),Capacity
+T1,Anchuruli (അഞ്ചുരുളി),100 kVA
