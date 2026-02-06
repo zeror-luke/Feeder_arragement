@@ -2,805 +2,923 @@
 <html lang="ml">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Unified SLD - Kanchiyar Section</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSEB Kanchiyar Section - Interactive SLD</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg-color: #f4f7f6;
-            --text-color: #333;
+            --primary: #0056b3;
+            --primary-dark: #003d82;
+            --secondary: #f0f4f8;
             --card-bg: #ffffff;
-            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
             
-            /* Feeder Colors */
-            --color-nariyanpara: #2196F3; /* Blue */
-            --color-kaliyar: #4CAF50;     /* Green */
-            --color-vanchimood: #FF9800;  /* Orange */
-            --color-nedumkandam: #9C27B0; /* Purple */
-            --color-source: #d32f2f;      /* Red */
+            /* Capacity Colors */
+            --kv-25: #d97706;
+            --kv-100: #2563eb;
+            --kv-160: #059669;
+            --kv-250: #dc2626;
+
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg-color);
-            overflow: hidden; /* Canvas handles scroll */
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            font-family: 'Roboto', 'Noto Sans Malayalam', sans-serif;
+            background-color: var(--secondary);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding-bottom: 4rem;
         }
 
-        /* Header */
+        /* --- Header --- */
         header {
-            background: white;
-            padding: 10px 15px;
-            box-shadow: var(--shadow);
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        h1 { margin: 0; font-size: 1.1rem; color: var(--text-color); }
-        .subtitle { font-size: 0.8rem; color: #666; display: block; }
-
-        .header-controls { display: flex; gap: 10px; }
-
-        .btn {
-            background: #eee;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 500;
-        }
-        
-        .btn-primary { background: var(--text-color); color: white; }
-        .btn-icon { padding: 8px; border-radius: 50%; width: 40px; height: 40px; }
-
-        /* Main Layout */
-        #app-container {
-            display: flex;
-            flex: 1;
-            position: relative;
-            overflow: hidden;
+        header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1rem; max-width: 600px; margin: 0 auto; }
+        .badge-header {
+            display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px;
+            border-radius: 20px; font-size: 0.85rem; margin-top: 1rem; font-weight: 500;
         }
 
-        /* Canvas Area */
-        #canvas-wrapper {
-            flex: 1;
-            position: relative;
-            background-color: #ffffff;
-            background-image: 
-                radial-gradient(#ddd 1px, transparent 1px);
-            background-size: 20px 20px;
-            cursor: grab;
-            overflow: hidden;
-            touch-action: none; /* Important for custom touch handling */
-        }
-        #canvas-wrapper:active { cursor: grabbing; }
-
-        canvas { display: block; width: 100%; height: 100%; }
-
-        /* Floating Zoom Controls */
-        .zoom-controls {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 10;
+        /* --- Controls --- */
+        .controls { max-width: 1200px; margin: -1.5rem auto 2rem; padding: 0 1.5rem; position: relative; z-index: 10; }
+        .control-bar {
+            background: var(--card-bg); padding: 1rem; border-radius: var(--radius);
+            box-shadow: var(--shadow); display: flex; flex-wrap: wrap; gap: 1rem;
+            align-items: center; justify-content: space-between;
         }
 
-        .zoom-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .search-box { flex: 1; min-width: 280px; position: relative; }
+        .search-box input {
+            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s;
         }
+        .search-box input:focus { border-color: var(--primary); }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 
-        /* Sidebar / List Overlay */
-        #sidebar {
-            width: 350px;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            z-index: 50;
-            transition: transform 0.3s ease;
-            position: absolute;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            transform: translateX(100%); /* Hidden by default on mobile */
-        }
-
-        #sidebar.open { transform: translateX(0); }
-
-        /* Desktop Sidebar Behavior */
-        @media (min-width: 1024px) {
-            #sidebar {
-                position: relative;
-                transform: translateX(0);
-                width: 380px;
-                border-left: 1px solid #eee;
-            }
-            .mobile-toggle { display: none; }
-            #app-container { padding: 0; }
-        }
-
-        .sidebar-header {
-            padding: 15px;
-            background: #f9f9f9;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .search-container {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            outline: none;
-        }
-
-        .transformer-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        /* Transformer Card Style */
-        .t-card {
-            background: white;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-left: 4px solid transparent;
+        .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .filter-btn {
+            background: transparent; border: 1px solid var(--border); padding: 0.5rem 1rem;
+            border-radius: 20px; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);
             transition: all 0.2s;
         }
+        .filter-btn:hover, .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .t-card:hover { background: #f0f8ff; transform: translateX(-2px); }
+        /* --- Main Layout --- */
+        main { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+        .feeder-section { margin-bottom: 3rem; }
+        .feeder-header {
+            display: flex; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .feeder-header h2 { color: var(--primary-dark); font-size: 1.5rem; margin-right: 1rem; }
+        .voltage-badge { background: var(--text-main); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+
+        /* --- Cards --- */
+        .transformer-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;
+        }
+        .transformer-card {
+            background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 1.25rem; transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 5px solid transparent; display: flex; flex-direction: column;
+            position: relative;
+        }
+        .transformer-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        /* Capacity Borders */
+        .kv-25 { border-left-color: var(--kv-25); }
+        .kv-100 { border-left-color: var(--kv-100); }
+        .kv-160 { border-left-color: var(--kv-160); }
+        .kv-250 { border-left-color: var(--kv-250); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .tr-name { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem; padding-right: 30px; }
+        .tr-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
         
-        .t-card.highlight { background: #fff3e0; border-color: var(--color-source); }
+        .kva-badge {
+            font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;
+            background: #f3f4f6; color: var(--text-main); align-self: flex-start;
+        }
+        .kv-25 .kva-badge { color: var(--kv-25); background: #fffbeb; }
+        .kv-100 .kva-badge { color: var(--kv-100); background: #eff6ff; }
+        .kv-160 .kva-badge { color: var(--kv-160); background: #ecfdf5; }
+        .kv-250 .kva-badge { color: var(--kv-250); background: #fef2f2; }
 
-        .t-info h4 { margin: 0 0 4px 0; font-size: 0.9rem; }
-        .t-meta { font-size: 0.75rem; color: #666; display: flex; gap: 8px; align-items: center;}
+        /* --- Move Button Feature --- */
+        .move-btn-container {
+            position: absolute; top: 10px; right: 10px;
+        }
+        .move-btn {
+            background: #f3f4f6; border: 1px solid #d1d5db; color: var(--text-muted);
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; transition: all 0.2s;
+        }
+        .move-btn:hover {
+            background: var(--primary); color: white; border-color: var(--primary);
+            transform: scale(1.1);
+        }
+        .move-tooltip {
+            position: absolute; right: 35px; top: 5px; background: #333; color: white;
+            padding: 4px 8px; border-radius: 4px; font-size: 12px; opacity: 0; pointer-events: none;
+            transition: opacity 0.2s; white-space: nowrap;
+        }
+        .move-btn:hover + .move-tooltip { opacity: 1; }
+
+        /* --- Modal --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
         
-        .badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; }
+        .modal-box {
+            background: white; padding: 2rem; border-radius: var(--radius);
+            width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            transform: scale(0.9); transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-box { transform: scale(1); }
 
-        /* Color classes for cards */
-        .border-nariyanpara { border-left-color: var(--color-nariyanpara) !important; }
-        .border-kaliyar { border-left-color: var(--color-kaliyar) !important; }
-        .border-vanchimood { border-left-color: var(--color-vanchimood) !important; }
-        .border-nedumkandam { border-left-color: var(--color-nedumkandam) !important; }
+        .modal-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--text-main); }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .form-select {
+            width: 100%; padding: 0.75rem; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 1rem; background-color: #fff;
+        }
 
-        .bg-nariyanpara { background-color: var(--color-nariyanpara); }
-        .bg-kaliyar { background-color: var(--color-kaliyar); }
-        .bg-vanchimood { background-color: var(--color-vanchimood); }
-        .bg-nedumkandam { background-color: var(--color-nedumkandam); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; }
+        .btn { padding: 0.6rem 1.2rem; border-radius: 6px; border: none; font-weight: 500; cursor: pointer; font-size: 0.95rem; }
+        .btn-cancel { background: #f3f4f6; color: var(--text-main); }
+        .btn-save { background: var(--primary); color: white; }
+        .btn:hover { opacity: 0.9; }
 
-        /* Close button for mobile */
-        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        /* --- Toast Notification --- */
+        .toast {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #1f2937; color: white; padding: 12px 24px;
+            border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transform: translateY(100px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000; display: flex; align-items: center; gap: 10px;
+        }
+        .toast.show { transform: translateY(0); }
+        .toast-success { border-left: 4px solid #10b981; }
 
+        footer { text-align: center; margin-top: 4rem; padding: 2rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; }
+        
+        /* Mobile tweaks */
+        @media (max-width: 640px) {
+            header h1 { font-size: 1.4rem; }
+            .control-bar { flex-direction: column; align-items: stretch; }
+            .filters { justify-content: center; }
+            .feeder-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+        }
     </style>
 </head>
 <body>
 
-<header>
-    <div>
-        <h1>SLD Kanchiyar</h1>
-        <span class="subtitle">33kV Substation Udhuthurai (08.05.2024)</span>
-    </div>
-    <div class="header-controls">
-        <button class="btn btn-primary mobile-toggle" onclick="toggleSidebar()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            &nbsp;List
-        </button>
-    </div>
-</header>
+    <header>
+        <h1>KSEB Kanchiyar Section</h1>
+        <p>Interactive SLD - Manage & View 11kV Feeders</p>
+        <div class="badge-header">Updated: 08.05.2024</div>
+    </header>
 
-<div id="app-container">
-    <!-- Canvas Visualization -->
-    <div id="canvas-wrapper">
-        <canvas id="sldCanvas"></canvas>
-        
-        <div class="zoom-controls">
-            <button class="zoom-btn" onclick="zoomIn()">+</button>
-            <button class="zoom-btn" onclick="zoomOut()">-</button>
-            <button class="zoom-btn" onclick="resetView()" title="Reset View">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/></svg>
-            </button>
+    <div class="controls">
+        <div class="control-bar">
+            <div class="search-box">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="searchInput" placeholder="Search transformer..." onkeyup="filterGrid()">
+            </div>
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterCapacity('all', this)">All</button>
+                <button class="filter-btn" onclick="filterCapacity(25, this)">25 kVA</button>
+                <button class="filter-btn" onclick="filterCapacity(100, this)">100 kVA</button>
+                <button class="filter-btn" onclick="filterCapacity(160, this)">160 kVA</button>
+                <button class="filter-btn" onclick="filterCapacity(250, this)">250 kVA</button>
+            </div>
         </div>
     </div>
 
-    <!-- Sidebar List -->
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <h3>Distribution Transformers</h3>
-            <button class="close-btn mobile-toggle" onclick="toggleSidebar()">&times;</button>
-        </div>
-        <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="Search DT Name or No...">
-        </div>
-        <div class="transformer-list" id="transformerList">
-            <!-- Populated via JS -->
+    <main id="app">
+        
+        <!-- FEEDER 1: NARAYANPARA -->
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Narayanpara Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-narayanpara">
+                <!-- Cards injected below -->
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container">
+                        <button class="move-btn" onclick="openMoveModal(this)" title="Change Feeder">&#8635;</button>
+                        <span class="move-tooltip">Move Feeder</span>
+                    </div>
+                    <div class="tr-name">നരിയൻപാറ (Narayanpara)</div>
+                    <div class="tr-id">T1</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പേകാമൂട് (Pezhumkandom)</div>
+                    <div class="tr-id">T2</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചരിഞ്ചിറ (Charinchira)</div>
+                    <div class="tr-id">T3</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">20 ഏക്കർ (20 Acre)</div>
+                    <div class="tr-id">T4</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കല്ലാർകടവ് (Kallarkadavu)</div>
+                    <div class="tr-id">T5</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മൈലാടിപ്പാറ (Mailadipara)</div>
+                    <div class="tr-id">T6</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഏഴാംബ്ലോക്ക് (7th Block)</div>
+                    <div class="tr-id">T7</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പുല്ലുപടി (Pullupadi)</div>
+                    <div class="tr-id">T8</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഹൈസ്കൂൾ (High School)</div>
+                    <div class="tr-id">T9</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഈസ്റ്റ് മാത്തുകുടി (East Mathukudi)</div>
+                    <div class="tr-id">T10</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കുരിശുമല (Kurishumala)</div>
+                    <div class="tr-id">T11</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചങ്ങനക്കവല (Changanakavala)</div>
+                    <div class="tr-id">T12</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">എലയിൽ (Elayil)</div>
+                    <div class="tr-id">T13</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഒനമരം (Onamaram)</div>
+                    <div class="tr-id">T14</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കൊച്ചുമുഖലകവല (Kochumukalakavala)</div>
+                    <div class="tr-id">T15</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ജാനിക്കട (Janikada)</div>
+                    <div class="tr-id">T16</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പാരിഷ് ഹാൾ (Parish Hall)</div>
+                    <div class="tr-id">T17</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഉദയപുരം (Udayapuram)</div>
+                    <div class="tr-id">T18</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പാറത്തുളം (Parathulam)</div>
+                    <div class="tr-id">T19</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-250">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പാച്ചാടി (Pachapadi)</div>
+                    <div class="tr-id">T20</div>
+                    <div class="kva-badge">250 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ജവഹർ കോളനി (Jawahar Colony)</div>
+                    <div class="tr-id">T21</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">സോർണവിലാസം (Sornavilasam)</div>
+                    <div class="tr-id">T22</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വാഴൂർകട ടൗൺ (Vazhoorkada Town)</div>
+                    <div class="tr-id">T23</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വാഴൂർകട കോളനി (Vazhoorkada Colony)</div>
+                    <div class="tr-id">T24</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEEDER 2: NEDUMKANDAM -->
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Nedumkandam Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-nedumkandam">
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പെരിയമല എസ്.ഡി (Periyamala S.D)</div>
+                    <div class="tr-id">T1</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മേരികുടി (Merikudi)</div>
+                    <div class="tr-id">T2</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഈസ്റ്റ് മാത്തുകുടി (East Mathukudi)</div>
+                    <div class="tr-id">T3</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">തുളസിപ്പടി (Tulasipadi)</div>
+                    <div class="tr-id">T4</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പാലാട്ടുഴി (Palattuzhi)</div>
+                    <div class="tr-id">T5</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">PT കാനം No -I (PT Kanan I)</div>
+                    <div class="tr-id">T6</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">PT കാനം No -II (PT Kanan II)</div>
+                    <div class="tr-id">T7</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                 <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">PT കാനം No -III (PT Kanan III)</div>
+                    <div class="tr-id">T8</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഏഴാം ബ്ലോക്ക് (7th Block)</div>
+                    <div class="tr-id">T9</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മുരിങ്ങൂട്ടികുടി (Muringootikudi)</div>
+                    <div class="tr-id">T10</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വികാസ് (Vikas)</div>
+                    <div class="tr-id">T11</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">തേവരയാർ (Thevarayar)</div>
+                    <div class="tr-id">T12</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വെളിലംകണ്ടം (Velilamkandam)</div>
+                    <div class="tr-id">T13</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഗുരുമഠം (Gurumadam)</div>
+                    <div class="tr-id">T14</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പുന്നപുര (Punnapura)</div>
+                    <div class="tr-id">T15</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">സുമതികട (Sumathikada)</div>
+                    <div class="tr-id">T16</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കാട്ടാലിപ്പാറ (Kattalippara)</div>
+                    <div class="tr-id">T17</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കാട്ടാലിപ്പാറ (Kattalipara Large)</div>
+                    <div class="tr-id">T18</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചങ്ങനശ്ശേരി (Changanssheri)</div>
+                    <div class="tr-id">T19</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEEDER 3: KATTIYAR -->
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Kattiyar Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-kattiyar">
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വാളി (Vally)</div>
+                    <div class="tr-id">T1</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">46 ഏക്കർ (46 Acre)</div>
+                    <div class="tr-id">T2</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കുഴൽപ്പാലം (Kuzhalpalam)</div>
+                    <div class="tr-id">T3</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മുഴിയാല്പടി (Muzhiyalpadi)</div>
+                    <div class="tr-id">T4</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വാലുംപടി (Valumpadi)</div>
+                    <div class="tr-id">T5</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കൽപ്പറമ്പ് (Kalparambu)</div>
+                    <div class="tr-id">T6</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വെളളം (Vellam)</div>
+                    <div class="tr-id">T7</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വേണാടുപടി (Venadupadi)</div>
+                    <div class="tr-id">T8</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">JPM (JPM)</div>
+                    <div class="tr-id">T9</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മിൽമ (MILMA)</div>
+                    <div class="tr-id">T10</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കുഴിമല (Kuzhimala)</div>
+                    <div class="tr-id">T11</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കാവടികവല (Kavadikavala)</div>
+                    <div class="tr-id">T12</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">KSEB ഓഫീസ് (KSEB Office)</div>
+                    <div class="tr-id">T13</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">രാജപുരം (Rajapuram)</div>
+                    <div class="tr-id">T14</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ആലേമട്ടു No -I (Alemattu I)</div>
+                    <div class="tr-id">T15</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ആലേമട്ടു No -II (Alemattu II)</div>
+                    <div class="tr-id">T16</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ആലേമട്ടു No -III (Alemattu III)</div>
+                    <div class="tr-id">T17</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഇലവുംപടി No -I (Elavumpadi I)</div>
+                    <div class="tr-id">T18</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                 <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഇലവുംപടി No -II (Elavumpadi II)</div>
+                    <div class="tr-id">T19</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മാർട്ടിൻ (Martin)</div>
+                    <div class="tr-id">T20</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">SN (S.N)</div>
+                    <div class="tr-id">T21</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEEDER 4: VANDANMEDU -->
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Vandanmedu Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-vandanmedu">
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വണ്ടന്മേട് (Vandanmedu)</div>
+                    <div class="tr-id">T1</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഒഴുകുപടി (Ozhukupadi)</div>
+                    <div class="tr-id">T2</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പാലാട്ട് (Palaatt)</div>
+                    <div class="tr-id">T3</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പുതിയപാലം (Puthiyapalam)</div>
+                    <div class="tr-id">T4</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">പള്ളിക്കവല (Pallikavala)</div>
+                    <div class="tr-id">T5</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                <div class="transformer-card kv-160">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഗുരുമഠം (Gurumadam)</div>
+                    <div class="tr-id">T6</div>
+                    <div class="kva-badge">160 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഒനമരം (Onamaram)</div>
+                    <div class="tr-id">T7</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കൊമേഴ്സ് (Commerce)</div>
+                    <div class="tr-id">T8</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മാസ്ക് (Mask)</div>
+                    <div class="tr-id">T9</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കൊച്ചുമുഖലകവല (Kochumukalakavala)</div>
+                    <div class="tr-id">T10</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ജാനിക്കട (Janikada)</div>
+                    <div class="tr-id">T11</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">സുമതികട (Sumathikada)</div>
+                    <div class="tr-id">T12</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചങ്ങനക്കവല (Changanakavala)</div>
+                    <div class="tr-id">T13</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ഹൈസ്കൂൾ (High School)</div>
+                    <div class="tr-id">T14</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കാട്ടുപടി (Kattupadi)</div>
+                    <div class="tr-id">T15</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കല്ലാർപടി (Kallarpadi)</div>
+                    <div class="tr-id">T16</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">തൂത്തുഴി (Thoozhi)</div>
+                    <div class="tr-id">T17</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">മൂലക്കട (Moolakkada)</div>
+                    <div class="tr-id">T18</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">വണ്ടന്മേട് ടവർ (Vandanmedu Tower)</div>
+                    <div class="tr-id">T19</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കല്ലാർമല No -II (Kallarmala II)</div>
+                    <div class="tr-id">T20</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-25">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കല്ലാർമല No -I (Kallarmala I)</div>
+                    <div class="tr-id">T21</div>
+                    <div class="kva-badge">25 kVA</div>
+                </div>
+                 <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചെമ്പൻകുളം No -II (Chembankulam II)</div>
+                    <div class="tr-id">T22</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-100">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">ചെമ്പൻകുളം No -I (Chembankulam I)</div>
+                    <div class="tr-id">T23</div>
+                    <div class="kva-badge">100 kVA</div>
+                </div>
+                <div class="transformer-card kv-250">
+                    <div class="move-btn-container"><button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span></div>
+                    <div class="tr-name">കടമാകുഴി (Kadamakuzhy)</div>
+                    <div class="tr-id">T24</div>
+                    <div class="kva-badge">250 kVA</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Move Modal Overlay -->
+    <div class="modal-overlay" id="moveModal">
+        <div class="modal-box">
+            <h3 class="modal-title">Change Feeder</h3>
+            <div class="form-group">
+                <label for="feederSelect">Select Target Feeder:</label>
+                <select id="feederSelect" class="form-select">
+                    <option value="feeder-narayanpara">Narayanpara</option>
+                    <option value="feeder-nedumkandam">Nedumkandam</option>
+                    <option value="feeder-kattiyar">Kattiyar</option>
+                    <option value="feeder-vandanmedu">Vandanmedu</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-save" onclick="confirmMove()">Move</button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    // --- Data Configuration ---
-    const feederConfig = {
-        'nariyanpara': { label: 'Nariyanpara', color: '#2196F3', ml: 'നരിയൻപാറ' },
-        'kaliyar': { label: 'Kaliyar', color: '#4CAF50', ml: 'കാളിയാർ' },
-        'vanchimood': { label: 'Vanchimood', color: '#FF9800', ml: 'വഞ്ചിമൂട്' },
-        'nedumkandam': { label: 'Nedumkandam', color: '#9C27B0', ml: 'നെടുംകണ്ടം' }
-    };
+    <!-- Toast Notification -->
+    <div id="toast" class="toast toast-success">
+        <span>&#10003;</span> <span id="toastMsg">Moved successfully</span>
+    </div>
 
-    const rawData = [
-        { id: "nariyanpara", transformers: [
-            { tNum: "T19", name: "Muriankadukudi", kva: 100 }, { tNum: "T20", name: "Ezham Block", kva: 100 },
-            { tNum: "T21", name: "PT Kanam No-III", kva: 25 }, { tNum: "T22", name: "PT Kanam No-II", kva: 25 },
-            { tNum: "T23", name: "PT Kanam No-I", kva: 25 }, { tNum: "T24", name: "Pampadypuzha", kva: 100 },
-            { tNum: "T1", name: "P C Pilly", kva: 100 }, { tNum: "T2", name: "Martin", kva: 25 },
-            { tNum: "T3", name: "S N", kva: 100 }, { tNum: "T4", name: "Periyar Junction", kva: 100 },
-            { tNum: "T5", name: "Suryanelli", kva: 100 }, { tNum: "T6", name: "Suraj", kva: 100 },
-            { tNum: "T7", name: "Sion", kva: 100 }, { tNum: "T8", name: "Vellamkandam", kva: 100 },
-            { tNum: "T9", name: "Kaliyar", kva: 100 }, { tNum: "T10", name: "PHC", kva: 100 },
-            { tNum: "T11", name: "Kallukandiyil", kva: 100 }, { tNum: "T12", name: "Vayal", kva: 100 },
-            { tNum: "T13", name: "East", kva: 100 }, { tNum: "T14", name: "Mulanjakuzhi", kva: 100 },
-            { tNum: "T15", name: "Muthumala", kva: 100 }, { tNum: "T16", name: "Meram Tender", kva: 100 },
-            { tNum: "T17", name: "46 Aar", kva: 100 }, { tNum: "T18", name: "Vali", kva: 100 }
-        ]},
-        { id: "kaliyar", transformers: [
-            { tNum: "T24", name: "Parimala SD", kva: 160 }, { tNum: "T23", name: "Meram", kva: 100 },
-            { tNum: "T22", name: "Kurishumala", kva: 100 }, { tNum: "T21", name: "East Marthoma", kva: 100 },
-            { tNum: "T20", name: "Vellamkandam", kva: 100 }, { tNum: "T19", name: "Vali", kva: 100 },
-            { tNum: "T18", name: "46 Aar", kva: 100 }, { tNum: "T17", name: "Thampady", kva: 100 },
-            { tNum: "T16", name: "Udhumbannoor", kva: 100 }, { tNum: "T15", name: "Maniyampady", kva: 100 },
-            { tNum: "T14", name: "Thoozhi", kva: 100 }, { tNum: "T13", name: "Moozhyoor", kva: 100 },
-            { tNum: "T12", name: "Vanchimood Tower", kva: 100 }, { tNum: "T11", name: "Kanjirakandam No-II", kva: 100 },
-            { tNum: "T10", name: "Kanjirakandam No-I", kva: 25 }, { tNum: "T9", name: "Paanjan Kulam No-II", kva: 100 },
-            { tNum: "T8", name: "Paanjan Kulam No-I", kva: 100 }, { tNum: "T7", name: "Kadamakuzhi", kva: 250 },
-            { tNum: "T6", name: "Rathinapara", kva: 100 }, { tNum: "T5", name: "Charal", kva: 100 },
-            { tNum: "T4", name: "Thuksheswari", kva: 100 }, { tNum: "T3", name: "Excel Padi", kva: 100 },
-            { tNum: "T2", name: "Kana Mudi Padi", kva: 100 }, { tNum: "T1", name: "Karianipadi", kva: 100 }
-        ]},
-        { id: "vanchimood", transformers: [
-            { tNum: "T1", name: "Vanchimood", kva: 100 }, { tNum: "T2", name: "Ozhukudy", kva: 100 },
-            { tNum: "T19", name: "Karimthala", kva: 100 }, { tNum: "T18", name: "Palaada", kva: 100 },
-            { tNum: "T20", name: "Puthiyapalam", kva: 100 }, { tNum: "T21", name: "Pichikavala", kva: 160 },
-            { tNum: "T4", name: "Gurumathi", kva: 160 }, { tNum: "T5", name: "Ommaram", kva: 100 },
-            { tNum: "T6", name: "Commerce", kva: 100 }, { tNum: "T7", name: "Masco", kva: 100 },
-            { tNum: "T8", name: "Kavalchena Kavala", kva: 100 }, { tNum: "T9", name: "Janikadu", kva: 100 },
-            { tNum: "T10", name: "Sumathikadu", kva: 100 }, { tNum: "T11", name: "Chandan Kavala", kva: 100 },
-            { tNum: "T12", name: "Hindu Pillai", kva: 100 }, { tNum: "T13", name: "Kanchikadapadi", kva: 100 },
-            { tNum: "T14", name: "Nariyanpara", kva: 100 }, { tNum: "T15", name: "Panchayath", kva: 100 },
-            { tNum: "T16", name: "Mikavavu", kva: 100 }, { tNum: "T17", name: "20 Aar", kva: 100 },
-            { tNum: "T22", name: "Allematty No-III", kva: 100 }, { tNum: "T23", name: "Elappally No-II", kva: 25 },
-            { tNum: "T24", name: "Elappally No-I", kva: 25 }, { tNum: "T3", name: "Rajapuram", kva: 100 }
-        ]},
-        { id: "nedumkandam", transformers: [
-            { tNum: "T2", name: "Anguruli", kva: 100 }, { tNum: "T1", name: "Agasthyamudi", kva: 100 },
-            { tNum: "T12", name: "Kadathipadi", kva: 100 }, { tNum: "T7", name: "Kalianthara", kva: 100 },
-            { tNum: "T9", name: "Rajapuram Trans.", kva: 100 }, { tNum: "T10", name: "Periyar SD", kva: 160 },
-            { tNum: "T11", name: "Trans. Tower", kva: 100 }, { tNum: "T8", name: "Kerala Sub", kva: 100 },
-            { tNum: "T17", name: "Pambarm Padi", kva: 100 }, { tNum: "T7", name: "Valumelpadi", kva: 100 },
-            { tNum: "T9", name: "Kanjikadu", kva: 100 }, { tNum: "T8", name: "Kalimuthan", kva: 100 },
-            { tNum: "T1", name: "Millam", kva: 160 }, { tNum: "T6", name: "Kaliyanadu", kva: 100 },
-            { tNum: "T16", name: "Kuttikanam", kva: 100 }, { tNum: "T15", name: "Kavadiyil Kavala", kva: 100 },
-            { tNum: "T14", name: "Thavarakalil", kva: 100 }, { tNum: "T13", name: "Madi", kva: 100 },
-            { tNum: "T12", name: "Meppam", kva: 100 }, { tNum: "T11", name: "Kazhimala", kva: 100 },
-            { tNum: "T10", name: "7th Block", kva: 100 }, { tNum: "T9", name: "Tulsipadi", kva: 100 },
-            { tNum: "T8", name: "Pampady Puzha", kva: 100 }, { tNum: "T7", name: "PT Kanam", kva: 100 }
-        ]}
-    ];
+    <footer>
+        <p>Electrical Section, Kanchiyar &copy; 2024</p>
+        <p style="font-size: 0.8rem; margin-top:0.5rem; opacity:0.7;">Generated from SLD Documentation (Interactive Mode)</p>
+    </footer>
 
-    // Flatten data for list rendering and mapping
-    let flatData = [];
-    rawData.forEach(feeder => {
-        feeder.transformers.forEach(t => {
-            flatData.push({
-                ...t,
-                feederId: feeder.id,
-                feederName: feederConfig[feeder.id].label,
-                color: feederConfig[feeder.id].color
-            });
-        });
-    });
+    <script>
+        // State for the modal
+        let selectedCard = null;
 
-    // --- State & Config ---
-    const canvas = document.getElementById('sldCanvas');
-    const ctx = canvas.getContext('2d');
-    const wrapper = document.getElementById('canvas-wrapper');
-    
-    let state = {
-        scale: 1,
-        panning: false,
-        pointX: 0,
-        pointY: 0,
-        startX: 0,
-        startY: 0,
-        hoveredNode: null
-    };
-    
-    // Layout Constants
-    const L = {
-        sourceX: 100,
-        feederX: 400,
-        transX: 800,
-        rowHeight: 50, // Vertical spacing between transformers
-        feederGap: 150 // Vertical spacing between feeder blocks
-    };
+        // 1. Search Functionality
+        function filterGrid() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const cards = document.getElementsByClassName('transformer-card');
 
-    // --- Initialization ---
-    function init() {
-        resizeCanvas();
-        renderList();
-        requestAnimationFrame(drawLoop);
-
-        // Events
-        window.addEventListener('resize', resizeCanvas);
-        document.getElementById('searchInput').addEventListener('input', renderList);
-        
-        // Mouse Events
-        wrapper.addEventListener('mousedown', onMouseDown);
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-        wrapper.addEventListener('wheel', onWheel, { passive: false });
-
-        // Touch Events
-        wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-        window.addEventListener('touchmove', onTouchMove, { passive: false });
-        window.addEventListener('touchend', onMouseUp);
-    }
-
-    function resizeCanvas() {
-        canvas.width = wrapper.clientWidth;
-        canvas.height = wrapper.clientHeight;
-        // Center initial view
-        if(state.pointX === 0 && state.pointY === 0) {
-           resetView(); 
-        }
-    }
-
-    // --- Core Drawing Logic ---
-    function drawLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        
-        // Apply Pan & Zoom
-        ctx.translate(state.pointX, state.pointY);
-        ctx.scale(state.scale, state.scale);
-
-        // Draw Connections (First layer)
-        drawConnections();
-
-        // Draw Nodes (Second layer)
-        drawNodes();
-
-        ctx.restore();
-        requestAnimationFrame(drawLoop);
-    }
-
-    function calculateLayout() {
-        // Calculate Y positions for all elements
-        let currentY = 100;
-        let layoutMap = []; // Stores {type, x, y, data, color}
-
-        // 1. Source Node
-        // Calculate total height to center source vertically
-        let totalHeight = 0;
-        rawData.forEach(f => totalHeight += (f.transformers.length * L.rowHeight));
-        totalHeight += (rawData.length - 1) * L.feederGap;
-        
-        const sourceY = (totalHeight / 2) + 100; // +100 padding top
-        layoutMap.push({ type: 'source', x: L.sourceX, y: sourceY, label: '33kV Substation\nUdhuthurai', color: '#d32f2f' });
-
-        // 2. Feeders & Transformers
-        let startY = 100;
-        
-        rawData.forEach(feeder => {
-            const config = feederConfig[feeder.id];
-            const count = feeder.transformers.length;
-            const blockHeight = count * L.rowHeight;
-            const feederY = startY + (blockHeight / 2);
-
-            // Feeder Node
-            layoutMap.push({ 
-                type: 'feeder', 
-                x: L.feederX, 
-                y: feederY, 
-                label: config.label + ' Feeder', 
-                color: config.color,
-                id: feeder.id
-            });
-
-            // Connection Source -> Feeder
-            drawConnection(L.sourceX, sourceY, L.feederX, feederY, config.color);
-
-            // Transformers
-            feeder.transformers.forEach((t, index) => {
-                const tY = startY + (index * L.rowHeight);
-                layoutMap.push({
-                    type: 'transformer',
-                    x: L.transX,
-                    y: tY,
-                    data: t,
-                    feederId: feeder.id,
-                    color: config.color
-                });
-
-                // Connection Feeder -> Transformer
-                // Use Cubic Bezier for smooth branching
-                ctx.beginPath();
-                ctx.moveTo(L.feederX, feederY);
-                ctx.bezierCurveTo(L.feederX + 150, feederY, L.transX - 150, tY, L.transX, tY);
-                
-                // Style based on hover
-                const isHovered = state.hoveredNode && state.hoveredNode.data.tNum === t.tNum;
-                ctx.lineWidth = isHovered ? 4 : 1.5;
-                ctx.strokeStyle = isHovered ? '#333' : config.color;
-                ctx.globalAlpha = isHovered ? 1 : 0.4;
-                ctx.stroke();
-                ctx.globalAlpha = 1;
-            });
-
-            startY += blockHeight + L.feederGap;
-        });
-
-        return layoutMap;
-    }
-
-    function drawConnection(x1, y1, x2, y2, color) {
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = color;
-        ctx.stroke();
-    }
-
-    function drawConnections() {
-        // Logic embedded in calculateLayout for simplicity in loop optimization, 
-        // but separated here for cleaner structure if needed.
-        // In this implementation, calculateLayout draws lines immediately for performance.
-        calculateLayout(); 
-    }
-
-    // This function actually runs twice in the loop above due to structure, let's refactor slightly for single pass
-    // Redefining drawLoop to use a pure separation of data calc and render
-    let layoutCache = [];
-
-    function drawLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.translate(state.pointX, state.pointY);
-        ctx.scale(state.scale, state.scale);
-
-        // Recalculate layout only if needed (optimization: could be static, but doing dynamic here)
-        layoutCache = getLayoutNodes();
-
-        // Draw Lines
-        layoutCache.forEach(node => {
-            if(node.type === 'source-link') {
-                 drawConnection(node.x1, node.y1, node.x2, node.y2, node.color);
-            } else if (node.type === 'branch-link') {
-                const isHovered = state.hoveredNode && state.hoveredNode.data && state.hoveredNode.data.tNum === node.targetTNum;
-                ctx.beginPath();
-                ctx.moveTo(node.x1, node.y1);
-                ctx.bezierCurveTo(node.cx1, node.cy1, node.cx2, node.cy2, node.x2, node.y2);
-                ctx.lineWidth = isHovered ? 4 : 1.5;
-                ctx.strokeStyle = isHovered ? '#333' : node.color;
-                ctx.globalAlpha = isHovered ? 1 : 0.3;
-                ctx.stroke();
-                ctx.globalAlpha = 1;
-            }
-        });
-
-        // Draw Nodes
-        layoutCache.forEach(node => {
-            if(node.type === 'node') drawNode(node);
-        });
-
-        ctx.restore();
-        requestAnimationFrame(drawLoop);
-    }
-
-    function getLayoutNodes() {
-        let nodes = [];
-        let totalH = rawData.reduce((acc, f) => acc + (f.transformers.length * L.rowHeight), 0) + (rawData.length - 1) * L.feederGap;
-        let sourceY = (totalH / 2) + 100;
-        let startY = 100;
-
-        // Source
-        nodes.push({ type: 'node', x: L.sourceX, y: sourceY, label: '33kV\nSubstation', shape: 'rect', color: '#d32f2f' });
-
-        rawData.forEach(feeder => {
-            const config = feederConfig[feeder.id];
-            const count = feeder.transformers.length;
-            const blockH = count * L.rowHeight;
-            const feederY = startY + (blockH / 2);
-
-            // Link Source to Feeder
-            nodes.push({ type: 'source-link', x1: L.sourceX, y1: sourceY, x2: L.feederX, y2: feederY, color: config.color });
-
-            // Feeder Node
-            nodes.push({ type: 'node', x: L.feederX, y: feederY, label: config.label, shape: 'circle', color: config.color, id: feeder.id });
-
-            feeder.transformers.forEach(t => {
-                const tY = startY + (t.indexOffset !== undefined ? t.indexOffset : feeder.transformers.indexOf(t)) * L.rowHeight;
-                const tIndex = feeder.transformers.indexOf(t); // Explicit index
-                
-                // Link Feeder to Trans
-                nodes.push({ 
-                    type: 'branch-link', 
-                    x1: L.feederX, y1: feederY, 
-                    x2: L.transX, y2: startY + (tIndex * L.rowHeight),
-                    cx1: L.feederX + 150, cy1: feederY,
-                    cx2: L.transX - 150, cy2: startY + (tIndex * L.rowHeight),
-                    color: config.color,
-                    targetTNum: t.tNum
-                });
-
-                // Trans Node
-                nodes.push({
-                    type: 'node',
-                    x: L.transX,
-                    y: startY + (tIndex * L.rowHeight),
-                    label: `${t.tNum}`,
-                    subLabel: t.name,
-                    data: t,
-                    shape: 'rect',
-                    color: config.color
-                });
-            });
-            startY += blockH + L.feederGap;
-        });
-        return nodes;
-    }
-
-    function drawNode(node) {
-        ctx.fillStyle = node.color;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-
-        // Highlight effect
-        const isHovered = state.hoveredNode && state.hoveredNode.data && state.hoveredNode.data.tNum === node.data?.tNum;
-        
-        if (isHovered) {
-            ctx.shadowColor = "rgba(0,0,0,0.5)";
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = '#fff'; // White center on hover
-            ctx.strokeStyle = node.color;
-            ctx.lineWidth = 3;
-        } else {
-            ctx.shadowBlur = 0;
-        }
-
-        if (node.shape === 'rect') {
-            ctx.beginPath();
-            ctx.rect(node.x - 20, node.y - 15, 40, 30);
-            ctx.fill();
-            ctx.stroke();
-        } else if (node.shape === 'circle') {
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, 25, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        // Text
-        ctx.fillStyle = isHovered ? '#000' : '#fff';
-        if (node.shape === 'rect' && !isHovered) ctx.fillStyle = '#000'; // Readability on small rects
-        if (node.shape === 'rect' && isHovered) ctx.fillStyle = node.color;
-
-        ctx.font = "bold 10px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        
-        // Simple truncation for canvas
-        const label = node.label.length > 8 ? node.label.substring(0,6)+'..' : node.label;
-        ctx.fillText(label, node.x, node.y);
-
-        // Side Label
-        ctx.fillStyle = "#333";
-        ctx.textAlign = "left";
-        ctx.font = "12px Arial";
-        if(node.subLabel) {
-            ctx.fillText(node.subLabel, node.x + 25, node.y + 4);
-            ctx.font = "10px #666";
-            ctx.fillText(`${node.data.kva} kVA`, node.x + 25, node.y + 16);
-        } else {
-            ctx.fillText(node.label, node.x + 35, node.y);
-        }
-    }
-
-    // --- Interaction Logic ---
-    function onMouseDown(e) {
-        state.panning = true;
-        state.startX = e.clientX - state.pointX;
-        state.startY = e.clientY - state.pointY;
-        wrapper.style.cursor = 'grabbing';
-    }
-
-    function onMouseMove(e) {
-        // Hover detection
-        handleHover(e.clientX, e.clientY);
-
-        if (!state.panning) return;
-        e.preventDefault();
-        state.pointX = e.clientX - state.startX;
-        state.pointY = e.clientY - state.startY;
-    }
-
-    function onMouseUp() {
-        state.panning = false;
-        wrapper.style.cursor = 'grab';
-    }
-
-    function onTouchStart(e) {
-        if (e.touches.length === 1) {
-            state.panning = true;
-            state.startX = e.touches[0].clientX - state.pointX;
-            state.startY = e.touches[0].clientY - state.pointY;
-        }
-    }
-
-    function onTouchMove(e) {
-        if (state.panning && e.touches.length === 1) {
-            e.preventDefault(); // Stop scroll
-            state.pointX = e.touches[0].clientX - state.startX;
-            state.pointY = e.touches[0].clientY - state.startY;
-        }
-    }
-
-    function onWheel(e) {
-        e.preventDefault();
-        const xs = (e.clientX - state.pointX) / state.scale;
-        const ys = (e.clientY - state.pointY) / state.scale;
-        const delta = -e.deltaY;
-        
-        (delta > 0) ? (state.scale *= 1.1) : (state.scale /= 1.1);
-        
-        state.pointX = e.clientX - xs * state.scale;
-        state.pointY = e.clientY - ys * state.scale;
-    }
-
-    function handleHover(screenX, screenY) {
-        const rect = canvas.getBoundingClientRect();
-        // Transform screen to world coords
-        const x = (screenX - rect.left - state.pointX) / state.scale;
-        const y = (screenY - rect.top - state.pointY) / state.scale;
-
-        let found = null;
-        // Check nodes
-        for (let node of layoutCache) {
-            if (node.type === 'node' && node.data) {
-                // Simple box hit test
-                if (x >= node.x - 20 && x <= node.x + 150 && y >= node.y - 15 && y <= node.y + 15) {
-                    found = node;
-                    break;
+            for (let i = 0; i < cards.length; i++) {
+                const name = cards[i].querySelector('.tr-name').textContent || cards[i].querySelector('.tr-name').innerText;
+                if (name.toLowerCase().indexOf(filter) > -1) {
+                    cards[i].style.display = "";
+                } else {
+                    cards[i].style.display = "none";
                 }
             }
         }
 
-        if (state.hoveredNode !== found) {
-            state.hoveredNode = found;
-            // Scroll sidebar
-            if (found) {
-                highlightSidebarItem(found.data.tNum);
+        // 2. Capacity Filter
+        function filterCapacity(kva, btn) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const cards = document.getElementsByClassName('transformer-card');
+            for (let i = 0; i < cards.length; i++) {
+                if (kva === 'all') {
+                    cards[i].style.display = "";
+                } else {
+                    if (cards[i].classList.contains('kv-' + kva)) {
+                        cards[i].style.display = "";
+                    } else {
+                        cards[i].style.display = "none";
+                    }
+                }
             }
         }
-    }
 
-    // --- UI Logic ---
-    function renderList() {
-        const list = document.getElementById('transformerList');
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        list.innerHTML = '';
+        // 3. Modal Functions
+        function openMoveModal(btn) {
+            // Find the closest parent card element
+            selectedCard = btn.closest('.transformer-card');
+            document.getElementById('moveModal').classList.add('active');
+        }
 
-        flatData.forEach(item => {
-            if (item.name.toLowerCase().includes(query) || item.tNum.toLowerCase().includes(query)) {
-                const div = document.createElement('div');
-                div.className = `t-card border-${item.feederId}`;
-                div.id = `card-${item.tNum}`;
-                div.innerHTML = `
-                    <div class="t-info">
-                        <h4>${item.name}</h4>
-                        <div class="t-meta">
-                            <span class="badge bg-${item.feederId}">${item.tNum}</span>
-                            <span>${item.kva} kVA</span>
-                        </div>
-                    </div>
-                `;
-                div.onclick = () => focusOnNode(item.tNum);
-                list.appendChild(div);
-            }
+        function closeModal() {
+            document.getElementById('moveModal').classList.remove('active');
+            selectedCard = null;
+        }
+
+        // Close modal if clicking outside box
+        document.getElementById('moveModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
         });
-    }
 
-    function highlightSidebarItem(tNum) {
-        const el = document.getElementById(`card-${tNum}`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('highlight');
-            setTimeout(() => el.classList.remove('highlight'), 1500);
-            
-            // Open sidebar on mobile if closed
-            if (window.innerWidth < 1024) {
-                document.getElementById('sidebar').classList.add('open');
+        // 4. Move Logic
+        function confirmMove() {
+            if (!selectedCard) return;
+
+            const targetId = document.getElementById('feederSelect').value;
+            const targetGrid = document.getElementById(targetId);
+
+            if (targetGrid) {
+                // Move the actual DOM element
+                targetGrid.appendChild(selectedCard);
+                
+                // Visual Feedback
+                const trName = selectedCard.querySelector('.tr-name').textContent.split('(')[0].trim();
+                showToast(`Moved <b>${trName}</b> to ${targetId.replace('feeder-', '')}`);
+                
+                // Clear search/filter to ensure the moved item is visible
+                document.getElementById('searchInput').value = '';
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.filter-btn').classList.add('active'); // Reset to All
+                const cards = document.getElementsByClassName('transformer-card');
+                for(let c of cards) c.style.display = "";
             }
-        }
-    }
 
-    function focusOnNode(tNum) {
-        const node = layoutCache.find(n => n.data && n.data.tNum === tNum);
-        if (node) {
-            // Center view on node
-            state.pointX = (canvas.width / 2) - (node.x * state.scale);
-            state.pointY = (canvas.height / 2) - (node.y * state.scale);
+            closeModal();
+        }
+
+        // 5. Toast Notification Logic
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msgSpan = document.getElementById('toastMsg');
+            msgSpan.innerHTML = message;
             
-            // Close sidebar on mobile after selection
-            if (window.innerWidth < 1024) {
-                toggleSidebar();
-            }
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         }
-    }
-
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('open');
-    }
-
-    // Zoom Controls
-    function zoomIn() {
-        state.scale *= 1.2;
-    }
-    function zoomOut() {
-        state.scale /= 1.2;
-    }
-    function resetView() {
-        state.scale = 0.6; // Default zoom out to see more
-        state.pointX = 50;
-        state.pointY = 50;
-    }
-
-    // Run
-    init();
-    resetView(); // Set initial zoom
-
-</script>
+    </script>
 </body>
 </html>
