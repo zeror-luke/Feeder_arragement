@@ -8,6 +8,123 @@ const DB_FILE = path.join(__dirname, 'feeders.db');
 const TRANSFORMER_TXT = path.join(__dirname, 'trnsfmr.txt');
 const AB_TXT = path.join(__dirname, 'AB.txt');
 
+const FEEDER_CONFIG = [
+  { slug: 'feeder-kanchiyar', heading: 'Kanchiyar', aliases: ['feeder-narayanpara'] },
+  { slug: 'feeder-nariampara', heading: 'Nariampara', aliases: ['feeder-nedumkandam'] },
+  { slug: 'feeder-vellilamkandam', heading: 'Vellilamkandam', aliases: ['feeder-kattiyar'] },
+  { slug: 'feeder-vandanmeedu', heading: 'Vandanmeedu', aliases: ['feeder-vandanmedu'] },
+  { slug: 'feeder-nedumkandam', heading: 'Nedumkandam', aliases: [] }
+];
+
+const FEEDER_SLUGS = FEEDER_CONFIG.map(f => f.slug);
+const FEEDER_ALIAS_MAP = FEEDER_CONFIG.reduce((acc, feeder) => {
+  acc[feeder.slug] = feeder.slug;
+  (feeder.aliases || []).forEach(alias => { acc[alias] = feeder.slug; });
+  return acc;
+}, {});
+const HEADING_TO_SLUG = FEEDER_CONFIG.reduce((acc, feeder) => {
+  acc[feeder.heading.toLowerCase()] = feeder.slug;
+  return acc;
+}, {});
+
+let transformerDataCache = null;
+
+function getTransformerDataMap() {
+  if (transformerDataCache) return transformerDataCache;
+  const raw = fs.readFileSync(TRANSFORMER_TXT, 'utf8');
+  const lines = raw.split(/\r?\n/);
+  const map = new Map();
+  let currentSlug = null;
+  let buffer = [];
+
+  const flush = () => {
+    if (!currentSlug || !buffer.length) {
+      buffer = [];
+      return;
+    }
+    const block = buffer.join('\n').trim();
+    buffer = [];
+    if (!block) return;
+    map.set(currentSlug, parseTransformerBlock(block));
+  };
+
+  lines.forEach(line => {
+    const headingMatch = line.match(/^---\s*(.+?)\s*---$/);
+    if (headingMatch) {
+      flush();
+      const key = headingMatch[1].trim().toLowerCase();
+      currentSlug = HEADING_TO_SLUG[key] || null;
+      return;
+    }
+    if (currentSlug) buffer.push(line);
+  });
+  flush();
+
+  transformerDataCache = map;
+  return map;
+}
+
+function parseTransformerBlock(block) {
+  try {
+    const records = parse(block, { columns: true, skip_empty_lines: true, trim: true });
+    return records
+      .map(toTransformerRow)
+      .filter(row => row.name || row.code);
+  } catch (err) {
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length <= 1) return [];
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim());
+      const rec = {};
+      headers.forEach((h, idx) => { rec[h] = cols[idx] || ''; });
+      rows.push(rec);
+    }
+    return rows.map(toTransformerRow).filter(row => row.name || row.code);
+  }
+}
+
+function toTransformerRow(record) {
+  const keys = Object.keys(record);
+  if (!keys.length) return { code: '', name: '', capacity: '' };
+  const codeKey = keys.find(k => /transformer/i.test(k)) || keys[0];
+  const nameKey = keys.find(k => /name/i.test(k)) || keys[1] || keys[0];
+  const capacityKey = keys.find(k => /capacity/i.test(k)) || keys[2] || keys[keys.length - 1];
+  return {
+    code: (record[codeKey] || '').trim(),
+    name: (record[nameKey] || '').trim(),
+    capacity: (record[capacityKey] || '').trim()
+  };
+}
+
+function runAsync(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
+}
+
+function allAsync(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows);
+    });
+  });
+}
+
+function getScalar(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) return reject(err);
+      resolve(row ? row.c : 0);
+    });
+  });
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -51,59 +168,87 @@ function ensureSchema(db) {
   });
 }
 
-function importDataIfEmpty(db) {
+async function importDataIfEmpty(db) {
+  const count = await getScalar(db, 'SELECT COUNT(*) as c FROM transformers');
+  if (count > 0) return false;
+
+  const locations = loadLocationsFromFile();
+  await insertLocations(db, locations);
+
+  const dataMap = getTransformerDataMap();
+  await insertTransformersData(db, dataMap, FEEDER_SLUGS);
+  return true;
+}
+
+function loadLocationsFromFile() {
+  const abContent = fs.readFileSync(AB_TXT, 'utf8');
+  return abContent
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+function insertLocations(db, locations) {
+  if (!locations.length) return Promise.resolve();
   return new Promise((resolve, reject) => {
-    db.get('SELECT COUNT(*) as c FROM transformers', (err, row) => {
-      if (err) return reject(err);
-      if (row && row.c > 0) return resolve(false); // already imported
-
-      const trContent = fs.readFileSync(TRANSFORMER_TXT, 'utf8');
-      const abContent = fs.readFileSync(AB_TXT, 'utf8');
-
-      // Parse AB.txt as simple lines of locations
-      const locations = abContent.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-      // Insert locations
-      const insertLoc = db.prepare('INSERT INTO locations(name) VALUES(?)');
-      locations.forEach(loc => insertLoc.run(loc));
-      insertLoc.finalize();
-
-      // trnsfmr.txt may contain multiple CSV blocks separated by blank lines.
-      const blocks = trContent.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
-      // Ensure five feeders available; use the five feeder IDs matching trnsfmr.txt
-      const feederKeys = ['feeder-kanchiyar','feeder-nariampara','feeder-vellilamkandam','feeder-vandanmeedu','feeder-nedumkandam'];
-
-      const insertTr = db.prepare('INSERT INTO transformers(code,name,capacity,feeder) VALUES(?,?,?,?)');
-      blocks.forEach((blk, idx) => {
-        // parse CSV block
-        try {
-          const records = parse(blk, { columns: true, skip_empty_lines: true, relax_column_count: true, trim: true });
-          const feeder = feederKeys[idx] || feederKeys[feederKeys.length - 1];
-          records.forEach(r => {
-            const code = (r['Transformer'] || r['Transformer,Location / Name (Malayalam),Capacity'] || '').trim();
-            const name = (r['Location / Name (Malayalam)'] || r['Location / Name (Malayalam),Capacity'] || r['Location / Name (Malayalam)'] || r['Location / Name (Malayalam),Capacity'] || r['Location / Name (Malayalam)'] || r['Location / Name (Malayalam)'] || r[Object.keys(r)[1]] || '').trim();
-            const capacity = (r['Capacity'] || r[Object.keys(r)[2]] || '').trim();
-            if (!name && !code) return;
-            insertTr.run(code, name, capacity, feeder);
-          });
-        } catch (e) {
-          // best-effort: try line-by-line CSV
-          const lines = blk.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-          if (lines.length <= 1) return;
-          const headers = lines[0].split(',').map(h => h.trim());
-          const feeder = feederKeys[idx] || feederKeys[feederKeys.length - 1];
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map(c => c.trim());
-            const code = cols[0] || '';
-            const name = cols[1] || '';
-            const capacity = cols[2] || '';
-            insertTr.run(code, name, capacity, feeder);
-          }
-        }
-      });
-      insertTr.finalize(() => resolve(true));
-    });
+    const stmt = db.prepare('INSERT INTO locations(name) VALUES(?)');
+    locations.forEach(loc => stmt.run(loc));
+    stmt.finalize(err => err ? reject(err) : resolve());
   });
+}
+
+function insertTransformersData(db, dataMap, targetSlugs) {
+  const rows = [];
+  targetSlugs.forEach(slug => {
+    const sectionRows = dataMap.get(slug) || [];
+    sectionRows.forEach(row => rows.push({ ...row, feeder: slug }));
+  });
+  if (!rows.length) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare('INSERT INTO transformers(code,name,capacity,feeder) VALUES(?,?,?,?)');
+    rows.forEach(({ code, name, capacity, feeder }) => {
+      stmt.run(code || null, name || null, capacity || null, feeder);
+    });
+    stmt.finalize(err => err ? reject(err) : resolve());
+  });
+}
+
+async function normalizeFeederAliases(db) {
+  for (const [alias, canonical] of Object.entries(FEEDER_ALIAS_MAP)) {
+    if (alias === canonical) continue;
+    await runAsync(db, 'UPDATE transformers SET feeder = ? WHERE feeder = ?', [canonical, alias]);
+    await runAsync(db, 'UPDATE ab_links SET feeder_a = ? WHERE feeder_a = ?', [canonical, alias]);
+    await runAsync(db, 'UPDATE ab_links SET feeder_b = ? WHERE feeder_b = ?', [canonical, alias]);
+  }
+}
+
+async function hydrateMissingFeederData(db) {
+  const rows = await allAsync(db, 'SELECT DISTINCT feeder FROM transformers WHERE feeder IS NOT NULL', []);
+  const existing = new Set(rows.map(r => FEEDER_ALIAS_MAP[r.feeder] || r.feeder));
+  const missing = FEEDER_SLUGS.filter(slug => !existing.has(slug));
+  if (!missing.length) return;
+  const dataMap = getTransformerDataMap();
+  await insertTransformersData(db, dataMap, missing);
+}
+
+async function enforceFeederCounts(db) {
+  const dataMap = getTransformerDataMap();
+  const expected = {};
+  FEEDER_SLUGS.forEach(slug => {
+    expected[slug] = (dataMap.get(slug) || []).length;
+  });
+  const rows = await allAsync(db, 'SELECT feeder, COUNT(*) as count FROM transformers GROUP BY feeder', []);
+  const actual = {};
+  rows.forEach(row => {
+    const slug = FEEDER_ALIAS_MAP[row.feeder] || row.feeder;
+    if (!slug) return;
+    actual[slug] = (actual[slug] || 0) + row.count;
+  });
+  const toReplace = FEEDER_SLUGS.filter(slug => expected[slug] && actual[slug] !== expected[slug]);
+  if (!toReplace.length) return;
+  const placeholders = toReplace.map(() => '?').join(',');
+  await runAsync(db, `DELETE FROM transformers WHERE feeder IN (${placeholders})`, toReplace);
+  await insertTransformersData(db, dataMap, toReplace);
 }
 
 app.get('/api/transformers', (req, res) => {
@@ -131,12 +276,16 @@ app.get('/api/locations', (req, res) => {
 // Return distinct feeders present in transformers table (used for dropdowns)
 app.get('/api/feeders', (req, res) => {
   const db = openDb();
-  db.all('SELECT DISTINCT feeder FROM transformers ORDER BY feeder', [], (err, rows) => {
+  db.all('SELECT DISTINCT feeder FROM transformers WHERE feeder IS NOT NULL', [], (err, rows) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
-    // normalize to array of feeder ids (strings)
-    const feeders = rows.map(r => r.feeder).filter(Boolean);
-    res.json(feeders);
+    const extraSet = new Set();
+    rows.forEach(r => {
+      const slug = FEEDER_ALIAS_MAP[r.feeder] || r.feeder;
+      if (slug) extraSet.add(slug);
+    });
+    const extras = Array.from(extraSet).filter(slug => !FEEDER_SLUGS.includes(slug)).sort();
+    res.json([...FEEDER_SLUGS, ...extras]);
   });
 });
 
@@ -165,12 +314,28 @@ app.post('/api/ablink', (req, res) => {
   });
 });
 
+// Reset (delete) an AB link for a location
+app.delete('/api/ablink/:locationId', (req, res) => {
+  const locationId = Number(req.params.locationId);
+  if (!locationId) return res.status(400).json({ error: 'Valid locationId is required' });
+
+  const db = openDb();
+  db.run('DELETE FROM ab_links WHERE location_id = ?', [locationId], function(err) {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ locationId, deleted: this.changes > 0 });
+  });
+});
+
 // Initialize DB and optionally import
 async function init(importOnly) {
   const db = openDb();
   try {
     await ensureSchema(db);
     const imported = await importDataIfEmpty(db);
+    await normalizeFeederAliases(db);
+    await hydrateMissingFeederData(db);
+    await enforceFeederCounts(db);
     db.close();
     if (importOnly) {
       console.log('Import finished:', imported);

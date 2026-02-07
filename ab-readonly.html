@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AB Switches Viewer - KSEB Kanchiyar</title>
+  <link rel="stylesheet" href="main.css">
+  <style>
+    body.ab-readonly .transformer-card { cursor: default; }
+    .legend { display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem; font-size:0.85rem; color:#4b5563; }
+    .legend span { display:inline-flex; align-items:center; gap:0.4rem; }
+    .legend-dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
+    .dot-linked { background:#dcfce7; border:1px solid #bbf7d0; }
+    .dot-partial { background:#fef3c7; border:1px solid #fde68a; }
+    .dot-none { background:#fee2e2; border:1px solid #fecaca; }
+    body.ab-page .kva-badge { border:1px solid transparent; transition:background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+    body.ab-page .kva-badge.status-linked { background:#dcfce7; color:#047857; border-color:#bbf7d0; }
+    body.ab-page .kva-badge.status-partial { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+    body.ab-page .kva-badge.status-none { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
+  </style>
+</head>
+<body class="ab-page ab-readonly">
+  <header>
+    <h1>KSEB Kanchiyar Section</h1>
+    <p>AB Switch Register &mdash; Read-only view</p>
+    <div class="badge-header">Public snapshot &middot; Updated: 08.05.2024</div>
+  </header>
+
+  <div class="controls">
+    <div class="control-bar">
+      <div class="search-box">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="abPublicSearch" placeholder="Search AB switch...">
+        <button type="button" class="search-clear-btn" id="abPublicSearchClearBtn" aria-label="Clear search">&times;</button>
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" type="button">View Only</button>
+      </div>
+      <div>
+        <button class="btn btn-cancel" onclick="window.location.href='index.html'">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section class="feeder-section">
+      <div class="feeder-header">
+        <h2>AB Switches</h2>
+        <span class="voltage-badge">Public view</span>
+      </div>
+      <div class="legend">
+        <span><span class="legend-dot dot-linked"></span>Linked</span>
+        <span><span class="legend-dot dot-partial"></span>Waiting for pair</span>
+        <span><span class="legend-dot dot-none"></span>No link</span>
+      </div>
+      <div class="transformer-grid" id="abPublicGrid"></div>
+    </section>
+  </main>
+
+  <footer style="text-align:center;">
+    <small style="color:#6b7280;">View-only list generated from AB.txt via API</small>
+  </footer>
+
+  <script src="main.js"></script>
+  <script>
+    const abPublicState = {
+      locations: [],
+      links: []
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupSearchClear('abPublicSearch', 'abPublicSearchClearBtn', filterAbGrid);
+      loadPublicAB();
+      if (typeof registerAutoRefresh === 'function') {
+        registerAutoRefresh(loadPublicAB);
+      }
+    });
+
+    function setupSearchClear(inputId, buttonId, onClear) {
+      const input = document.getElementById(inputId);
+      const button = document.getElementById(buttonId);
+      if (!input || !button) return;
+      button.addEventListener('click', () => {
+        input.value = '';
+        if (typeof onClear === 'function') onClear();
+        input.focus();
+      });
+    }
+
+    async function loadPublicAB() {
+      const grid = document.getElementById('abPublicGrid');
+      try {
+        const [locRes, linkRes] = await Promise.all([
+          fetch('/api/locations'),
+          fetch('/api/ablinks')
+        ]);
+        if (!locRes.ok) throw new Error('Failed to load locations');
+        abPublicState.locations = await locRes.json();
+        abPublicState.links = linkRes.ok ? await linkRes.json() : [];
+        renderPublicAB();
+      } catch (err) {
+        console.error(err);
+        if (grid) grid.textContent = 'Unable to load AB list.';
+      }
+    }
+
+    function renderPublicAB() {
+      const grid = document.getElementById('abPublicGrid');
+      if (!grid) return;
+      const { locations } = abPublicState;
+      if (!Array.isArray(locations) || !locations.length) {
+        grid.innerHTML = '<div class="empty-state">No AB locations available.</div>';
+        return;
+      }
+
+      const ordered = [...locations].sort((a, b) => {
+        const aLinked = hasCompleteLink(a.id);
+        const bLinked = hasCompleteLink(b.id);
+        if (aLinked === bLinked) return a.name.localeCompare(b.name);
+        return aLinked ? -1 : 1;
+      });
+
+      grid.innerHTML = '';
+      ordered.forEach(row => {
+        const card = document.createElement('div');
+        card.className = 'transformer-card kv-100';
+
+        const title = document.createElement('div');
+        title.className = 'tr-name';
+        title.textContent = row.name;
+
+        const id = document.createElement('div');
+        id.className = 'tr-id';
+        id.textContent = `AB-${row.id}`;
+
+        const badge = document.createElement('div');
+        badge.className = 'kva-badge';
+        const badgeInfo = buildBadgeDetails(row.id);
+        badge.textContent = badgeInfo.text;
+        badge.classList.add(badgeInfo.statusClass);
+
+        card.appendChild(title);
+        card.appendChild(id);
+        card.appendChild(badge);
+        grid.appendChild(card);
+      });
+
+      filterAbGrid();
+    }
+
+    function filterAbGrid() {
+      const grid = document.getElementById('abPublicGrid');
+      const query = document.getElementById('abPublicSearch')?.value.trim().toLowerCase() || '';
+      if (!grid) return;
+      grid.querySelectorAll('.transformer-card').forEach(card => {
+        const label = card.querySelector('.tr-name')?.textContent?.toLowerCase() || '';
+        card.style.display = !query || label.includes(query) ? '' : 'none';
+      });
+    }
+
+    function getLinkRecord(locationId) {
+      return abPublicState.links.find(link => link.location_id === locationId);
+    }
+
+    function hasCompleteLink(locationId) {
+      const record = getLinkRecord(locationId);
+      return Boolean(record && record.feeder_a && record.feeder_b);
+    }
+
+    function formatFeederLabel(slug = '') {
+      if (!slug) return '';
+      return slug.replace(/^feeder-/, '').replace(/-/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function buildBadgeDetails(locationId) {
+      const record = getLinkRecord(locationId);
+      if (record && record.feeder_a && record.feeder_b) {
+        return { text: `${formatFeederLabel(record.feeder_a)} ↔ ${formatFeederLabel(record.feeder_b)}`, statusClass: 'status-linked' };
+      }
+      if (record && (record.feeder_a || record.feeder_b)) {
+        const feederName = formatFeederLabel(record.feeder_a || record.feeder_b);
+        return { text: `${feederName} waiting`, statusClass: 'status-partial' };
+      }
+      return { text: 'No link', statusClass: 'status-none' };
+    }
+  </script>
+</body>
+</html>

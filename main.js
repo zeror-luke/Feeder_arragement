@@ -1,5 +1,138 @@
-// State for the modal
+// State for the modals
 let selectedCard = null;
+let transformerStore = [];
+const transformerIndex = new Map();
+const bulkSelection = new Set();
+const AUTH_STORAGE_KEY = 'kseb-auth-token';
+const AUTH_ALLOWED_USER = 'admin';
+const AUTH_ALLOWED_PASS = '$pass123';
+let authSetupComplete = false;
+const authQueue = [];
+
+function isAuthenticated() {
+    try {
+        return localStorage.getItem(AUTH_STORAGE_KEY) === 'granted';
+    } catch (e) {
+        return false;
+    }
+}
+
+function requireAuth(callback) {
+    if (typeof callback === 'function') {
+        if (isAuthenticated()) {
+            callback();
+            return;
+        }
+        authQueue.push(callback);
+    } else if (isAuthenticated()) {
+        return;
+    }
+    showAuthOverlay();
+}
+
+function showAuthOverlay() {
+    const overlay = document.getElementById('authOverlay');
+    if (!overlay) {
+        flushAuthQueue();
+        return;
+    }
+    overlay.classList.add('active');
+    document.body.classList.add('auth-locked');
+    if (!authSetupComplete) {
+        const form = document.getElementById('authForm');
+        const userInput = document.getElementById('authUser');
+        const passInput = document.getElementById('authPass');
+        const errorBox = document.getElementById('authError');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = userInput?.value?.trim() || '';
+                const password = passInput?.value || '';
+                if (username === AUTH_ALLOWED_USER && password === AUTH_ALLOWED_PASS) {
+                    try { localStorage.setItem(AUTH_STORAGE_KEY, 'granted'); } catch (err) {}
+                    hideAuthOverlay();
+                    flushAuthQueue();
+                } else {
+                    if (errorBox) {
+                        errorBox.textContent = 'Invalid credentials. Please try again.';
+                    }
+                    passInput?.focus();
+                    passInput?.select();
+                }
+            });
+        }
+        authSetupComplete = true;
+    }
+    const userInput = document.getElementById('authUser');
+    if (userInput && !userInput.value) userInput.focus();
+}
+
+function hideAuthOverlay() {
+    const overlay = document.getElementById('authOverlay');
+    overlay?.classList.remove('active');
+    document.body.classList.remove('auth-locked');
+    const errorBox = document.getElementById('authError');
+    if (errorBox) errorBox.textContent = '';
+}
+
+function flushAuthQueue() {
+    while (authQueue.length) {
+        const cb = authQueue.shift();
+        try { cb?.(); } catch (e) { console.error(e); }
+    }
+}
+
+function setupSearchClear(inputId, buttonId, onClear) {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    if (!input || !button) return;
+    button.addEventListener('click', () => {
+        input.value = '';
+        if (typeof onClear === 'function') onClear();
+        input.focus();
+    });
+}
+
+const autoRefreshCallbacks = new Set();
+let autoRefreshBound = false;
+
+function registerAutoRefresh(callback) {
+    if (typeof callback !== 'function') return;
+    autoRefreshCallbacks.add(callback);
+    if (autoRefreshBound) return;
+    autoRefreshBound = true;
+
+    const triggerRefresh = () => {
+        autoRefreshCallbacks.forEach(cb => {
+            try {
+                cb();
+            } catch (err) {
+                console.error('Auto refresh failed', err);
+            }
+        });
+    };
+
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted || navigationCameFromHistory()) {
+            triggerRefresh();
+        }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            triggerRefresh();
+        }
+    });
+}
+
+function navigationCameFromHistory() {
+    try {
+        const navEntry = performance.getEntriesByType('navigation')[0];
+        return Boolean(navEntry && navEntry.type === 'back_forward');
+    } catch (err) {
+        return false;
+    }
+}
 
 // 1. Search Functionality
 function filterGrid() {
@@ -64,6 +197,8 @@ function confirmMove() {
     if (targetGrid) {
         // Move the actual DOM element
         targetGrid.appendChild(selectedCard);
+        const transformerId = selectedCard.dataset.transformerId;
+        if (transformerId) updateTransformerFeeder(transformerId, targetId);
         
         // Visual Feedback
         const trName = selectedCard.querySelector('.tr-name')?.textContent?.split('(')[0].trim() || 'Transformer';
@@ -101,13 +236,15 @@ async function fetchAndRender() {
         const res = await fetch('/api/transformers');
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
+        transformerStore = Array.isArray(data) ? data : [];
+        transformerIndex.clear();
 
         // Clear existing grids
         const grids = document.querySelectorAll('.transformer-grid');
         grids.forEach(g => g.innerHTML = '<!-- Feeder data will be populated -->');
 
-        data.forEach(rec => {
-                const feederId = rec.feeder || 'feeder-kanchiyar';
+        transformerStore.forEach(rec => {
+            const feederId = rec.feeder || 'feeder-kanchiyar';
             const grid = document.getElementById(feederId) || document.querySelector('.transformer-grid');
             if (!grid) return;
 
@@ -119,6 +256,12 @@ async function fetchAndRender() {
             else if (cap.indexOf('160') > -1) kvClass = 'kv-160';
             else if (cap.indexOf('250') > -1) kvClass = 'kv-250';
             card.className = `transformer-card ${kvClass}`;
+            const key = getTransformerKey(rec);
+            if (key) {
+                card.dataset.transformerId = key;
+                card.dataset.feeder = feederId;
+                transformerIndex.set(key, { record: rec, card });
+            }
 
             const moveContainer = document.createElement('div'); moveContainer.className = 'move-btn-container';
             moveContainer.innerHTML = `<button class="move-btn" onclick="openMoveModal(this)">&#8635;</button><span class="move-tooltip">Move Feeder</span>`;
@@ -139,6 +282,179 @@ async function fetchAndRender() {
         console.error('Could not load transformers', e);
     }
 }
+
+// --- Bulk move helpers ---
+function openBulkMoveModal() {
+    const modal = document.getElementById('bulkMoveModal');
+    if (!modal) return;
+    bulkSelection.clear();
+    const search = document.getElementById('bulkSearch');
+    if (search) {
+        search.value = '';
+        handleBulkSearchInput({ target: search });
+    } else {
+        renderBulkSearchResults([], '');
+    }
+    renderBulkSelectedList();
+    const feederSelect = document.getElementById('bulkTargetFeeder');
+    if (feederSelect) feederSelect.selectedIndex = 0;
+    modal.classList.add('active');
+}
+
+function closeBulkModal() {
+    const modal = document.getElementById('bulkMoveModal');
+    if (modal) modal.classList.remove('active');
+}
+
+document.getElementById('bulkMoveModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeBulkModal();
+});
+
+function handleBulkSearchInput(event) {
+    const query = event?.target?.value || '';
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) {
+        renderBulkSearchResults([], '');
+        return;
+    }
+    const matches = transformerStore
+        .filter(rec => {
+            const name = (rec.name || '').toLowerCase();
+            const code = (rec.code || '').toLowerCase();
+            return name.includes(trimmed) || code.includes(trimmed);
+        })
+        .slice(0, 8);
+    renderBulkSearchResults(matches, trimmed);
+}
+
+function renderBulkSearchResults(matches, query) {
+    const box = document.getElementById('bulkSearchResults');
+    if (!box) return;
+    if (!query) {
+        box.innerHTML = '<div class="bulk-search-note">Type a name or code to find transformers.</div>';
+        return;
+    }
+    if (!matches.length) {
+        box.innerHTML = '<div class="bulk-search-note">No matches found.</div>';
+        return;
+    }
+    box.innerHTML = '';
+    matches.forEach(rec => {
+        const key = getTransformerKey(rec);
+        if (!key) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bulk-search-item';
+        const label = rec.name || rec.code || 'Unnamed';
+        const code = rec.code ? rec.code : '';
+        btn.innerHTML = `<span>${label}</span><span style="color:var(--text-muted);font-size:0.8rem;">${code}</span>`;
+        btn.addEventListener('click', () => addBulkSelection(key));
+        box.appendChild(btn);
+    });
+}
+
+function addBulkSelection(key) {
+    if (!key) return;
+    if (!transformerIndex.has(key)) {
+        showToast('Transformer not available for move');
+        return;
+    }
+    if (bulkSelection.has(key)) {
+        showToast('Already added to bulk move');
+        return;
+    }
+    bulkSelection.add(key);
+    renderBulkSelectedList();
+    const search = document.getElementById('bulkSearch');
+    if (search) {
+        search.focus();
+        search.select();
+    }
+}
+
+function removeBulkSelection(key) {
+    bulkSelection.delete(key);
+    renderBulkSelectedList();
+}
+
+function renderBulkSelectedList() {
+    const container = document.getElementById('bulkSelectedList');
+    if (!container) return;
+    if (!bulkSelection.size) {
+        container.innerHTML = '<span class="bulk-search-note">No transformers selected yet.</span>';
+        return;
+    }
+    container.innerHTML = '';
+    bulkSelection.forEach(key => {
+        const entry = transformerIndex.get(key);
+        const label = entry?.record?.name || entry?.record?.code || 'Unnamed';
+        const chip = document.createElement('span');
+        chip.className = 'bulk-chip';
+        chip.innerHTML = `${label}<button type="button" aria-label="Remove">&times;</button>`;
+        chip.querySelector('button').addEventListener('click', () => removeBulkSelection(key));
+        container.appendChild(chip);
+    });
+}
+
+function confirmBulkMove() {
+    const ids = Array.from(bulkSelection);
+    if (!ids.length) {
+        showToast('Select at least one transformer');
+        return;
+    }
+    const target = document.getElementById('bulkTargetFeeder')?.value;
+    const targetGrid = target ? document.getElementById(target) : null;
+    if (!target || !targetGrid) {
+        showToast('Choose a valid target feeder');
+        return;
+    }
+    let moved = 0;
+    ids.forEach(key => {
+        const entry = transformerIndex.get(key);
+        const card = entry?.card || document.querySelector(`.transformer-card[data-transformer-id="${key}"]`);
+        if (card) {
+            targetGrid.appendChild(card);
+            card.dataset.feeder = target;
+            moved += 1;
+        }
+        updateTransformerFeeder(key, target);
+    });
+    bulkSelection.clear();
+    renderBulkSelectedList();
+    closeBulkModal();
+    const feederLabel = formatFeederLabel(target);
+    showToast(`Moved ${moved} transformer${moved === 1 ? '' : 's'} to ${feederLabel}`);
+}
+
+function updateTransformerFeeder(key, feederId) {
+    if (!key) return;
+    const entry = transformerIndex.get(key);
+    if (entry && entry.record) {
+        entry.record.feeder = feederId;
+    }
+}
+
+function getTransformerKey(record) {
+    if (!record) return null;
+    if (record.id !== undefined && record.id !== null) return String(record.id);
+    if (record.code) return record.code;
+    return null;
+}
+
+function formatFeederLabel(feederId) {
+    return (feederId || '').replace('feeder-', '').replace(/-/g, ' ');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const bulkSearch = document.getElementById('bulkSearch');
+    if (bulkSearch) bulkSearch.addEventListener('input', handleBulkSearchInput);
+    setupSearchClear('searchInput', 'searchClearBtn', filterGrid);
+    setupSearchClear('bulkSearch', 'bulkSearchClearBtn', () => {
+        if (bulkSearch) {
+            handleBulkSearchInput({ target: bulkSearch });
+        }
+    });
+});
 
 // Initialize dynamic loading on DOM ready
 // Expose start function to be called after user chooses view

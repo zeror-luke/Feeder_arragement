@@ -13,6 +13,25 @@
 </head>
 <body>
 
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card">
+            <h3>Secure Access</h3>
+            <p>Please sign in to manage feeder data.</p>
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="authUser">Username</label>
+                    <input type="text" id="authUser" class="form-select" placeholder="Enter username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="authPass">Password</label>
+                    <input type="password" id="authPass" class="form-select" placeholder="Enter password" autocomplete="current-password" required>
+                </div>
+                <div class="auth-error" id="authError"></div>
+                <button type="submit" class="btn btn-save">Unlock</button>
+            </form>
+        </div>
+    </div>
+
     <header>
         <h1>KSEB Kanchiyar Section</h1>
         <p>Interactive SLD - Manage & View 11kV Feeders</p>
@@ -24,6 +43,7 @@
             <div class="search-box">
                 <span class="search-icon">&#128269;</span>
                 <input type="text" id="searchInput" placeholder="Search transformer..." onkeyup="filterGrid()">
+                <button type="button" class="search-clear-btn" id="searchClearBtn" aria-label="Clear search">&times;</button>
             </div>
             <div class="filters">
                 <button class="filter-btn active" onclick="filterCapacity('all', this)">All</button>
@@ -31,6 +51,9 @@
                 <button class="filter-btn" onclick="filterCapacity(100, this)">100 kVA</button>
                 <button class="filter-btn" onclick="filterCapacity(160, this)">160 kVA</button>
                 <button class="filter-btn" onclick="filterCapacity(250, this)">250 kVA</button>
+            </div>
+            <div>
+                <button class="btn btn-save" onclick="openBulkMoveModal()">Bulk Move</button>
             </div>
         </div>
     </div>
@@ -115,6 +138,39 @@
         </div>
     </div>
 
+    <!-- Bulk Move Modal -->
+    <div class="modal-overlay" id="bulkMoveModal">
+        <div class="modal-box">
+            <h3 class="modal-title">Bulk Move Transformers</h3>
+            <div class="form-group">
+                <label for="bulkSearch">Search Transformer</label>
+                <div class="input-clear-wrapper">
+                    <input type="text" id="bulkSearch" class="form-select" placeholder="Type name or code...">
+                    <button type="button" class="input-clear-btn" id="bulkSearchClearBtn" aria-label="Clear search">&times;</button>
+                </div>
+                <div id="bulkSearchResults" class="bulk-search-results"></div>
+            </div>
+            <div class="form-group">
+                <label>Selected Transformers</label>
+                <div id="bulkSelectedList" class="bulk-selected-list"></div>
+            </div>
+            <div class="form-group">
+                <label for="bulkTargetFeeder">Move To Feeder</label>
+                <select id="bulkTargetFeeder" class="form-select">
+                    <option value="feeder-kanchiyar">Kanchiyar</option>
+                    <option value="feeder-nariampara">Nariampara</option>
+                    <option value="feeder-vellilamkandam">Vellilamkandam</option>
+                    <option value="feeder-vandanmeedu">Vandanmeedu</option>
+                    <option value="feeder-nedumkandam">Nedumkandam</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeBulkModal()">Cancel</button>
+                <button class="btn btn-save" onclick="confirmBulkMove()">Move Selected</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast toast-success">
         <span>&#10003;</span> <span id="toastMsg">Moved successfully</span>
@@ -125,11 +181,26 @@
         <p style="font-size: 0.8rem; margin-top:0.5rem; opacity:0.7;">Generated from SLD Documentation (Interactive Mode)</p>
     </footer>
 
-    <script src="main.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (window.startApp) window.startApp();
-      });
-    </script>
+        <script src="main.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const bootApp = () => {
+                    if (window.startApp) {
+                        window.startApp();
+                    }
+                };
+                const refreshTransformers = () => {
+                    if (typeof requireAuth === 'function') {
+                        requireAuth(bootApp);
+                    } else {
+                        bootApp();
+                    }
+                };
+                refreshTransformers();
+                if (typeof registerAutoRefresh === 'function') {
+                    registerAutoRefresh(refreshTransformers);
+                }
+            });
+        </script>
 </body>
 </html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSEB Kanchiyar Section - Feeder Overview (Read-only)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body class="public-transformers">
+    <header>
+        <h1>KSEB Kanchiyar Section</h1>
+        <p>11kV Feeder Snapshot &mdash; Read-only dashboard</p>
+        <div class="badge-header">Public view &middot; Updated: 08.05.2024</div>
+    </header>
+
+    <div class="controls">
+        <div class="control-bar">
+            <div class="search-box">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="publicSearchInput" placeholder="Search transformer...">
+                <button type="button" class="search-clear-btn" id="publicSearchClearBtn" aria-label="Clear search">&times;</button>
+            </div>
+            <div class="filters" id="publicFilters">
+                <button class="filter-btn active" data-kva="all">All</button>
+                <button class="filter-btn" data-kva="25">25 kVA</button>
+                <button class="filter-btn" data-kva="100">100 kVA</button>
+                <button class="filter-btn" data-kva="160">160 kVA</button>
+                <button class="filter-btn" data-kva="250">250 kVA</button>
+            </div>
+            <div>
+                <button class="btn btn-cancel" onclick="window.location.href='index.html'">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Kanchiyar Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-kanchiyar"></div>
+        </section>
+
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Nariampara Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-nariampara"></div>
+        </section>
+
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Vellilamkandam Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-vellilamkandam"></div>
+        </section>
+
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Vandanmeedu Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-vandanmeedu"></div>
+        </section>
+
+        <section class="feeder-section">
+            <div class="feeder-header">
+                <h2>Nedumkandam Feeder</h2>
+                <span class="voltage-badge">11 kV</span>
+            </div>
+            <div class="transformer-grid" id="feeder-nedumkandam"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Electrical Section, Kanchiyar &copy; 2024</p>
+        <p style="font-size:0.85rem; margin-top:0.5rem; opacity:0.7;">Data provided for viewing only. Editing available in secure workspace.</p>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        const FEEDER_ORDER = ['feeder-kanchiyar','feeder-nariampara','feeder-vellilamkandam','feeder-vandanmeedu','feeder-nedumkandam'];
+        let transformerSnapshot = [];
+        let currentCapacityFilter = 'all';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupSearchClear('publicSearchInput', 'publicSearchClearBtn', applyPublicFilters);
+            document.getElementById('publicSearchInput')?.addEventListener('input', applyPublicFilters);
+            setupFilterButtons();
+            fetchTransformersSnapshot();
+            if (typeof registerAutoRefresh === 'function') {
+                registerAutoRefresh(fetchTransformersSnapshot);
+            }
+        });
+
+        function setupSearchClear(inputId, buttonId, onClear) {
+            const input = document.getElementById(inputId);
+            const button = document.getElementById(buttonId);
+            if (!input || !button) return;
+            button.addEventListener('click', () => {
+                input.value = '';
+                if (typeof onClear === 'function') onClear();
+                input.focus();
+            });
+        }
+
+        function setupFilterButtons() {
+            const container = document.getElementById('publicFilters');
+            if (!container) return;
+            container.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentCapacityFilter = btn.dataset.kva || 'all';
+                    applyPublicFilters();
+                });
+            });
+        }
+
+        async function fetchTransformersSnapshot() {
+            try {
+                const response = await fetch('/api/transformers');
+                if (!response.ok) throw new Error('Failed to fetch transformers');
+                transformerSnapshot = await response.json();
+                renderTransformerCards();
+            } catch (err) {
+                console.error(err);
+                document.querySelectorAll('.transformer-grid').forEach(grid => {
+                    grid.innerHTML = '<div class="empty-state">Data unavailable.</div>';
+                });
+            }
+        }
+
+        function renderTransformerCards() {
+            const buckets = new Map();
+            FEEDER_ORDER.forEach(feeder => buckets.set(feeder, []));
+
+            transformerSnapshot.forEach(record => {
+                const feeder = record.feeder || 'feeder-kanchiyar';
+                if (!buckets.has(feeder)) buckets.set(feeder, []);
+                buckets.get(feeder).push(record);
+            });
+
+            buckets.forEach((records, feeder) => {
+                const grid = document.getElementById(feeder);
+                if (!grid) return;
+                if (!records.length) {
+                    grid.innerHTML = '<div class="empty-state">No transformers listed.</div>';
+                    return;
+                }
+                const cards = records
+                    .slice()
+                    .sort((a,b) => (a.name || a.code || '').localeCompare(b.name || b.code || ''))
+                    .map(buildTransformerCard);
+                grid.innerHTML = '';
+                cards.forEach(card => grid.appendChild(card));
+            });
+
+            applyPublicFilters();
+        }
+
+        function buildTransformerCard(record) {
+            const card = document.createElement('div');
+            card.className = `transformer-card ${getCapacityClass(record.capacity)}`;
+            const name = document.createElement('div');
+            name.className = 'tr-name';
+            name.textContent = record.name || record.code || 'Unnamed';
+            const code = document.createElement('div');
+            code.className = 'tr-id';
+            code.textContent = record.code || '';
+            const badge = document.createElement('div');
+            badge.className = 'kva-badge';
+            badge.textContent = record.capacity || '';
+            card.dataset.capacity = (record.capacity || '').toLowerCase();
+            card.dataset.searchText = `${record.name || ''} ${record.code || ''}`.toLowerCase();
+            card.appendChild(name);
+            card.appendChild(code);
+            card.appendChild(badge);
+            return card;
+        }
+
+        function getCapacityClass(capacity = '') {
+            const normalized = capacity.toString().toLowerCase();
+            if (normalized.includes('25')) return 'kv-25';
+            if (normalized.includes('160')) return 'kv-160';
+            if (normalized.includes('250')) return 'kv-250';
+            return 'kv-100';
+        }
+
+        function applyPublicFilters() {
+            const query = document.getElementById('publicSearchInput')?.value.trim().toLowerCase() || '';
+            document.querySelectorAll('.transformer-card').forEach(card => {
+                const matchesSearch = !query || card.dataset.searchText?.includes(query);
+                const matchesCapacity = currentCapacityFilter === 'all' || card.dataset.capacity?.includes(currentCapacityFilter);
+                card.style.display = matchesSearch && matchesCapacity ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
