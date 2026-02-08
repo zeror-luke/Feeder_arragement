@@ -4,8 +4,10 @@ let transformerStore = [];
 const transformerIndex = new Map();
 const bulkSelection = new Set();
 const AUTH_STORAGE_KEY = 'kseb-auth-token';
+const AUTH_USER_KEY = 'kseb-auth-user';
 const AUTH_ALLOWED_USER = 'admin';
 const AUTH_ALLOWED_PASS = '$pass123';
+const LOG_ENDPOINT = '/api/logs';
 let authSetupComplete = false;
 const authQueue = [];
 
@@ -49,7 +51,16 @@ function showAuthOverlay() {
                 const username = userInput?.value?.trim() || '';
                 const password = passInput?.value || '';
                 if (username === AUTH_ALLOWED_USER && password === AUTH_ALLOWED_PASS) {
-                    try { localStorage.setItem(AUTH_STORAGE_KEY, 'granted'); } catch (err) {}
+                    try {
+                        localStorage.setItem(AUTH_STORAGE_KEY, 'granted');
+                        localStorage.setItem(AUTH_USER_KEY, username);
+                    } catch (err) {}
+                    logActivity({
+                        action: 'login',
+                        title: 'User login',
+                        description: `${username} signed in`,
+                        user: username
+                    });
                     hideAuthOverlay();
                     flushAuthQueue();
                 } else {
@@ -134,6 +145,42 @@ function navigationCameFromHistory() {
     }
 }
 
+function getCurrentUser() {
+    try {
+        const stored = localStorage.getItem(AUTH_USER_KEY);
+        if (stored) return stored;
+        if (localStorage.getItem(AUTH_STORAGE_KEY) === 'granted') {
+            localStorage.setItem(AUTH_USER_KEY, AUTH_ALLOWED_USER);
+            return AUTH_ALLOWED_USER;
+        }
+    } catch (err) {
+        // ignore
+    }
+    return 'Unknown';
+}
+
+function logActivity(entry = {}) {
+    const payload = {
+        timestamp: new Date().toISOString(),
+        user: entry.user || getCurrentUser(),
+        action: entry.action || 'update',
+        title: entry.title || entry.action || 'Update',
+        description: entry.description || '',
+        metadata: entry.metadata ?? null
+    };
+    try {
+        fetch(LOG_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).catch(err => {
+            console.error('Unable to log activity', err);
+        });
+    } catch (err) {
+        console.error('Unable to log activity', err);
+    }
+}
+
 // 1. Search Functionality
 function filterGrid() {
     const input = document.getElementById('searchInput');
@@ -195,14 +242,21 @@ function confirmMove() {
     const targetGrid = document.getElementById(targetId);
 
     if (targetGrid) {
+        const previousFeeder = selectedCard.dataset.feeder || '';
         // Move the actual DOM element
         targetGrid.appendChild(selectedCard);
+        selectedCard.dataset.feeder = targetId;
         const transformerId = selectedCard.dataset.transformerId;
         if (transformerId) updateTransformerFeeder(transformerId, targetId);
         
         // Visual Feedback
         const trName = selectedCard.querySelector('.tr-name')?.textContent?.split('(')[0].trim() || 'Transformer';
         showToast(`Moved <b>${trName}</b> to ${targetId.replace('feeder-', '')}`);
+        logActivity({
+            action: 'move_transformer',
+            title: 'Transformer moved',
+            description: `${trName} moved ${previousFeeder ? `from ${formatFeederLabel(previousFeeder)} ` : ''}to ${formatFeederLabel(targetId)}`
+        });
         
         // Clear search/filter to ensure the moved item is visible
         document.getElementById('searchInput').value = '';
@@ -413,9 +467,15 @@ function confirmBulkMove() {
         const entry = transformerIndex.get(key);
         const card = entry?.card || document.querySelector(`.transformer-card[data-transformer-id="${key}"]`);
         if (card) {
+            const previousFeeder = card.dataset.feeder || entry?.record?.feeder || '';
             targetGrid.appendChild(card);
             card.dataset.feeder = target;
             moved += 1;
+            logActivity({
+                action: 'bulk_move_item',
+                title: 'Transformer moved',
+                description: `${entry?.record?.name || entry?.record?.code || key} moved ${previousFeeder ? `from ${formatFeederLabel(previousFeeder)} ` : ''}to ${formatFeederLabel(target)}`
+            });
         }
         updateTransformerFeeder(key, target);
     });
@@ -424,6 +484,13 @@ function confirmBulkMove() {
     closeBulkModal();
     const feederLabel = formatFeederLabel(target);
     showToast(`Moved ${moved} transformer${moved === 1 ? '' : 's'} to ${feederLabel}`);
+    if (moved) {
+        logActivity({
+            action: 'bulk_move',
+            title: 'Bulk move completed',
+            description: `Moved ${moved} transformer${moved === 1 ? '' : 's'} to ${feederLabel}`
+        });
+    }
 }
 
 function updateTransformerFeeder(key, feederId) {

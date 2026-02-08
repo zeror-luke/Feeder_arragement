@@ -161,7 +161,18 @@ function ensureSchema(db) {
           FOREIGN KEY(location_id) REFERENCES locations(id)
         )`, (err2) => {
           if (err2) return reject(err2);
-          resolve();
+          db.run(`CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            user TEXT,
+            action TEXT,
+            title TEXT,
+            description TEXT,
+            metadata TEXT
+          )`, (err3) => {
+            if (err3) return reject(err3);
+            resolve();
+          });
         });
       });
     });
@@ -325,6 +336,60 @@ app.delete('/api/ablink/:locationId', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ locationId, deleted: this.changes > 0 });
   });
+});
+
+function normalizeLogPayload(body = {}) {
+  const now = new Date().toISOString();
+  const user = (body.user && String(body.user).trim()) || 'Unknown';
+  const action = (body.action && String(body.action).trim()) || 'update';
+  const title = (body.title && String(body.title).trim()) || action || 'Update';
+  const description = (body.description && String(body.description).trim()) || '';
+  let metadata = null;
+  if (body.metadata !== undefined && body.metadata !== null) {
+    if (typeof body.metadata === 'string') metadata = body.metadata;
+    else {
+      try { metadata = JSON.stringify(body.metadata); }
+      catch { metadata = null; }
+    }
+  }
+  return { timestamp: now, user, action, title, description, metadata };
+}
+
+function parseMetadataField(value) {
+  if (!value) return null;
+  try { return JSON.parse(value); }
+  catch { return value; }
+}
+
+app.post('/api/logs', (req, res) => {
+  const entry = normalizeLogPayload(req.body);
+  const db = openDb();
+  db.run(
+    `INSERT INTO activity_logs(timestamp, user, action, title, description, metadata)
+     VALUES(?,?,?,?,?,?)`,
+    [entry.timestamp, entry.user, entry.action, entry.title, entry.description, entry.metadata],
+    function(err) {
+      db.close();
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: this.lastID, ...entry, metadata: parseMetadataField(entry.metadata) });
+    }
+  );
+});
+
+app.get('/api/logs', (req, res) => {
+  const limitParam = Number.parseInt(req.query.limit, 10);
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 500) : 200;
+  const db = openDb();
+  db.all(
+    `SELECT * FROM activity_logs ORDER BY datetime(timestamp) DESC LIMIT ?`,
+    [limit],
+    (err, rows) => {
+      db.close();
+      if (err) return res.status(500).json({ error: err.message });
+      const mapped = rows.map(row => ({ ...row, metadata: parseMetadataField(row.metadata) }));
+      res.json(mapped);
+    }
+  );
 });
 
 // Initialize DB and optionally import

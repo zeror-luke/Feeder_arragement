@@ -299,6 +299,16 @@
           else abLinks.push({ location_id: location.id, feeder_a: payload.feederA, feeder_b: payload.feederB });
           renderABGrid();
           showToast('Interlink saved');
+          if (typeof logActivity === 'function') {
+            const aLabel = formatFeederLabel(payload.feederA);
+            const bLabel = formatFeederLabel(payload.feederB);
+            const linkLabel = bLabel ? `${aLabel || 'Feeder A'} ↔ ${bLabel}` : (aLabel || bLabel || 'Feeder pending');
+            logActivity({
+              action: 'update_ab_link',
+              title: 'AB link saved',
+              description: `${location.name}: ${linkLabel}`
+            });
+          }
           modal.classList.remove('active');
         } catch (e) {
           console.error(e);
@@ -315,6 +325,13 @@
         abLinks = abLinks.filter(link => link.location_id !== location.id);
         renderABGrid();
         showToast('Interlink reset');
+        if (typeof logActivity === 'function') {
+          logActivity({
+            action: 'reset_ab_link',
+            title: 'AB link reset',
+            description: `${location.name} interlink cleared`
+          });
+        }
         if (modal) {
           const selA = modal.querySelector('#feederA');
           const selB = modal.querySelector('#feederB');
