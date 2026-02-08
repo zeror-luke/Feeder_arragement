@@ -1,0 +1,9 @@
+admin{
+    name:Luke,username:admin,pass:$pass123;
+    name:Manoj,username:manojse,pass:cj3v1972;
+    name:Meera,username:meeraae,pass:meera1985;
+    name:Shalique,username:shaliquese,pass:shalique1990;
+    name:Robin,username:robinse,pass:robin1080;
+}
+
+

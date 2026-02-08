@@ -3,10 +3,12 @@ const path = require('path');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const { parse } = require('csv-parse/sync');
+const bcrypt = require('bcryptjs');
 
 const DB_FILE = path.join(__dirname, 'feeders.db');
 const TRANSFORMER_TXT = path.join(__dirname, 'trnsfmr.txt');
 const AB_TXT = path.join(__dirname, 'AB.txt');
+const USERLIST_FILE = path.join(__dirname, 'userlist.txt');
 
 const FEEDER_CONFIG = [
   { slug: 'feeder-kanchiyar', heading: 'Kanchiyar', aliases: ['feeder-narayanpara'] },
@@ -171,7 +173,15 @@ function ensureSchema(db) {
             metadata TEXT
           )`, (err3) => {
             if (err3) return reject(err3);
-            resolve();
+            db.run(`CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              username TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL
+            )`, (err4) => {
+              if (err4) return reject(err4);
+              resolve();
+            });
           });
         });
       });
@@ -206,6 +216,36 @@ function insertLocations(db, locations) {
     locations.forEach(loc => stmt.run(loc));
     stmt.finalize(err => err ? reject(err) : resolve());
   });
+}
+
+function loadUsersFromFile() {
+  if (!fs.existsSync(USERLIST_FILE)) return [];
+  const raw = fs.readFileSync(USERLIST_FILE, 'utf8');
+  const pattern = /name\s*:\s*([^,]+),\s*username\s*:\s*([^,]+),\s*pass\s*:\s*([^;]+);/gi;
+  const users = [];
+  let match;
+  while ((match = pattern.exec(raw)) !== null) {
+    const name = match[1]?.trim();
+    const username = match[2]?.trim().toLowerCase();
+    const password = match[3]?.trim();
+    if (!name || !username || !password) continue;
+    users.push({ name, username, password });
+  }
+  return users;
+}
+
+async function syncUsersFromFile(db) {
+  const users = loadUsersFromFile();
+  if (!users.length) return;
+  for (const user of users) {
+    const hash = bcrypt.hashSync(user.password, 10);
+    await runAsync(
+      db,
+      `INSERT INTO users(name, username, password_hash) VALUES(?,?,?)
+       ON CONFLICT(username) DO UPDATE SET name=excluded.name, password_hash=excluded.password_hash`,
+      [user.name, user.username, hash]
+    );
+  }
 }
 
 function insertTransformersData(db, dataMap, targetSlugs) {
@@ -338,6 +378,33 @@ app.delete('/api/ablink/:locationId', (req, res) => {
   });
 });
 
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+  const normalized = String(username).trim().toLowerCase();
+  const db = openDb();
+  db.get('SELECT id, name, username, password_hash FROM users WHERE username = ?', [normalized], async (err, row) => {
+    if (err) {
+      db.close();
+      return res.status(500).json({ error: err.message });
+    }
+    if (!row) {
+      db.close();
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    try {
+      const match = await bcrypt.compare(password, row.password_hash);
+      db.close();
+      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+      const token = Buffer.from(`${row.username}:${Date.now()}`).toString('base64');
+      res.json({ token, user: { name: row.name, username: row.username } });
+    } catch (compareErr) {
+      db.close();
+      res.status(500).json({ error: compareErr.message });
+    }
+  });
+});
+
 function normalizeLogPayload(body = {}) {
   const now = new Date().toISOString();
   const user = (body.user && String(body.user).trim()) || 'Unknown';
@@ -401,6 +468,7 @@ async function init(importOnly) {
     await normalizeFeederAliases(db);
     await hydrateMissingFeederData(db);
     await enforceFeederCounts(db);
+    await syncUsersFromFile(db);
     db.close();
     if (importOnly) {
       console.log('Import finished:', imported);

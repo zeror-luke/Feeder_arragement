@@ -5,15 +5,13 @@ const transformerIndex = new Map();
 const bulkSelection = new Set();
 const AUTH_STORAGE_KEY = 'kseb-auth-token';
 const AUTH_USER_KEY = 'kseb-auth-user';
-const AUTH_ALLOWED_USER = 'admin';
-const AUTH_ALLOWED_PASS = '$pass123';
 const LOG_ENDPOINT = '/api/logs';
 let authSetupComplete = false;
 const authQueue = [];
 
 function isAuthenticated() {
     try {
-        return localStorage.getItem(AUTH_STORAGE_KEY) === 'granted';
+        return Boolean(localStorage.getItem(AUTH_STORAGE_KEY));
     } catch (e) {
         return false;
     }
@@ -46,26 +44,35 @@ function showAuthOverlay() {
         const passInput = document.getElementById('authPass');
         const errorBox = document.getElementById('authError');
         if (form) {
-            form.addEventListener('submit', (e) => {
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const username = userInput?.value?.trim() || '';
                 const password = passInput?.value || '';
-                if (username === AUTH_ALLOWED_USER && password === AUTH_ALLOWED_PASS) {
+                if (!username || !password) {
+                    if (errorBox) errorBox.textContent = 'Username and password are required.';
+                    return;
+                }
+                try {
+                    const result = await requestLogin(username, password);
                     try {
-                        localStorage.setItem(AUTH_STORAGE_KEY, 'granted');
-                        localStorage.setItem(AUTH_USER_KEY, username);
-                    } catch (err) {}
+                        localStorage.setItem(AUTH_STORAGE_KEY, result.token || 'granted');
+                        if (result.user?.username) {
+                            localStorage.setItem(AUTH_USER_KEY, result.user.username);
+                        } else {
+                            localStorage.setItem(AUTH_USER_KEY, username);
+                        }
+                    } catch (storageErr) { console.warn('Could not persist auth token', storageErr); }
                     logActivity({
                         action: 'login',
                         title: 'User login',
-                        description: `${username} signed in`,
-                        user: username
+                        description: `${result.user?.name || username} signed in`,
+                        user: result.user?.username || username
                     });
                     hideAuthOverlay();
                     flushAuthQueue();
-                } else {
+                } catch (loginErr) {
                     if (errorBox) {
-                        errorBox.textContent = 'Invalid credentials. Please try again.';
+                        errorBox.textContent = loginErr.message || 'Invalid credentials. Please try again.';
                     }
                     passInput?.focus();
                     passInput?.select();
@@ -149,9 +156,10 @@ function getCurrentUser() {
     try {
         const stored = localStorage.getItem(AUTH_USER_KEY);
         if (stored) return stored;
-        if (localStorage.getItem(AUTH_STORAGE_KEY) === 'granted') {
-            localStorage.setItem(AUTH_USER_KEY, AUTH_ALLOWED_USER);
-            return AUTH_ALLOWED_USER;
+        if (localStorage.getItem(AUTH_STORAGE_KEY)) {
+            const fallback = 'Unknown';
+            localStorage.setItem(AUTH_USER_KEY, fallback);
+            return fallback;
         }
     } catch (err) {
         // ignore
@@ -179,6 +187,23 @@ function logActivity(entry = {}) {
     } catch (err) {
         console.error('Unable to log activity', err);
     }
+}
+
+async function requestLogin(username, password) {
+    const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    if (!response.ok) {
+        let message = 'Login failed';
+        try {
+            const error = await response.json();
+            if (error?.error) message = error.error;
+        } catch (_) {}
+        throw new Error(message);
+    }
+    return response.json();
 }
 
 // 1. Search Functionality

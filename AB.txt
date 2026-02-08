@@ -10,7 +10,7 @@ Locations & Landmarks (English & Malayalam)
 
     Holycross (ഹോളിക്രോസ്)
 
-    Pathipadi (പാത്തിപടി )
+    Pathipadi (പാത്തിപടി)
 
     Jawahar Colony (ജവഹർ കോളനി)
 
@@ -86,7 +86,7 @@ Locations & Landmarks (English & Malayalam)
 
     Irupatheckar (ഇരുപതേക്കർ)
 
-    J.P.M (ജെ.പി.എം)
+    JPM (ജെ.പി.എം)
 
     Kottampadi Gurumandiram (കൊറ്റംപടി ഗുരുമന്ദിരം)
 
